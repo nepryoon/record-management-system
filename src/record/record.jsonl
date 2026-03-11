@@ -1,0 +1,9 @@
+{"ID": 1, "Type": "Client", "Name": "Alice Smith", "Address Line 1": "123 Baker St", "Address Line 2": "", "Address Line 3": "", "City": "London", "State": "Greater London", "Zip Code": "NW1 6XE", "Country": "UK", "Phone Number": "07123456789"}
+{"ID": 2, "Company Name": "SKY", "Type": "Airline"}
+{"Client_ID": 1, "Airline_ID": 2, "Date": "2026-03-12 10:00", "Start City": "London", "End City": "Paris", "Type": "Flight"}
+{"ID": "2", "Name": "George", "Address Line 1": "", "Address Line 2": "", "Address Line 3": "", "City": "Dherynia", "State": "", "Zip Code": "", "Country": "", "Phone Number": "99443322", "Type": "Client"}
+{"ID": 3, "Company Name": "Cyprus Airways", "Type": "Airline"}
+{"Client_ID": 2, "Airline_ID": 3, "Date": "2026-06-20 22:30", "Start City": "LCA", "End City": "Athens", "Type": "Flight"}
+{"ID": 6, "Company Name": "Wizz", "Type": "Airline"}
+{"Client_ID": 1, "Airline_ID": 2, "Date": "2002-03-22 22:22", "Start City": "xds", "End City": "sfsf", "Type": "Flight"}
+{"Client_ID": 1, "Airline_ID": 2, "Date": "2222-02-22 22:22", "Start City": "vdvs", "End City": "ssfs", "Type": "Flight"}
