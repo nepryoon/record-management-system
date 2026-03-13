@@ -52,8 +52,3 @@ repo.search(type="client", city="London")
 repo.update(1, "client", {"city": "Manchester"})
 repo.delete(1, "client")
 ```
-
-## Contributors
-
-- Backend:
-- GUI:
