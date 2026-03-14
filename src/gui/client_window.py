@@ -199,8 +199,15 @@ class ClientWindow(tk.Toplevel):
         table_frame = tk.Frame(main, bg="white")
         table_frame.pack(fill="both", expand=True, pady=12)
 
-        # Only showing main info
-        columns = ("ID", "Name", "City", "Country", "Phone Number")
+        columns = (
+            "ID", "NAME", "ADDRESS 1", "ADDRESS 2", "ADDRESS 3",
+            "CITY", "STATE", "ZIP CODE", "COUNTRY", "PHONE NUMBER"
+        )
+        col_widths = {
+            "ID": 50, "NAME": 120, "ADDRESS 1": 130, "ADDRESS 2": 130,
+            "ADDRESS 3": 130, "CITY": 100, "STATE": 80, "ZIP CODE": 80,
+            "COUNTRY": 100, "PHONE NUMBER": 120
+        }
         # Treeview columns
         self.tree = ttk.Treeview(
             table_frame,
@@ -213,12 +220,15 @@ class ClientWindow(tk.Toplevel):
         self.tree.tag_configure('evenrow', background='#f2f2f2')
 
         for col in columns:
-            self.tree.heading(col, text=col.upper())
-            self.tree.column(col, anchor="center", width=190)
+            self.tree.heading(col, text=col)
+            self.tree.column(col, anchor="center", width=col_widths[col], minwidth=col_widths[col])
 
-        self.tree.pack(side="left", fill="both", expand=True)
+        # Horizontal scrollbar
+        xscroll = ttk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(xscrollcommand=xscroll.set)
+        xscroll.pack(side="bottom", fill="x")
 
-        # Scrollbar for Treeview
+        # Vertical scrollbar for Treeview
         scroll = ttk.Scrollbar(
             table_frame,
             orient="vertical",
@@ -226,6 +236,7 @@ class ClientWindow(tk.Toplevel):
         )
         self.tree.configure(yscrollcommand=scroll.set)
         scroll.pack(side="right", fill="y")
+        self.tree.pack(fill="both", expand=True)
 
         # ----------------------------------------------------------
         # Empty record message
@@ -280,7 +291,9 @@ class ClientWindow(tk.Toplevel):
             if r.get("Type") == "Client":
                 tag = "evenrow" if idx % 2 == 0 else "oddrow"
                 self.tree.insert("", "end", values=(
-                    r.get("ID"), r.get("Name"), r.get("City"),
+                    r.get("ID"), r.get("Name"),
+                    r.get("Address Line 1"), r.get("Address Line 2"), r.get("Address Line 3"),
+                    r.get("City"), r.get("State"), r.get("Zip Code"),
                     r.get("Country"), r.get("Phone Number")
                 ), tags=(tag,))
                 count += 1
