@@ -18,7 +18,7 @@ def open_main_window():
 
     # ----------------------------------------------------------
     # Window size and centering
-    WIN_W, WIN_H = 700, 780
+    WIN_W, WIN_H = 1024, 768
     root.resizable(True, True)
     root.minsize(WIN_W, WIN_H)
     root.update_idletasks()
@@ -36,20 +36,20 @@ def open_main_window():
     tk.Label(
         header_frame,
         text="TRAVEL RECORD MANAGEMENT SYSTEM",
-        font=("Arial", 16, "bold"),
+        font=("Arial", 20, "bold"),
         fg="white",
         bg="#2c3e50",
-        wraplength=660,
+        wraplength=960,
         justify="center"
-    ).pack(pady=(12, 2), fill="x", expand=True)
+    ).pack(pady=(16, 4), fill="x", expand=True)
 
     tk.Label(
         header_frame,
         text="Select a module to manage system records",
-        font=("Arial", 11),
+        font=("Arial", 12),
         fg="#d6eaf8",
         bg="#2c3e50"
-    ).pack(pady=(0, 12))
+    ).pack(pady=(0, 16))
 
     # ----------------------------------------------------------
     # Footer
@@ -107,14 +107,14 @@ def open_main_window():
     # ----------------------------------------------------------
     # Common Button Style
     btn_style = {
-        "font": ("Arial", 15, "bold"),
+        "font": ("Arial", 16, "bold"),
         "fg": "white",
         "bg": "#34495e",
         "relief": "raised",
         "bd": 3,
         "compound": "top",
         "padx": 20,
-        "pady": 10,
+        "pady": 16,
         "cursor": "hand2"
     }
 
@@ -165,7 +165,7 @@ def open_main_window():
     if client_icon:
         client_btn.config(image=client_icon)
         client_btn.image = client_icon
-    client_btn.grid(row=0, column=0, padx=20, pady=8, sticky="nsew")
+    client_btn.grid(row=0, column=0, padx=20, pady=10, sticky="nsew")
     client_btn.bind("<Enter>", on_enter)
     client_btn.bind("<Leave>", on_leave)
 
@@ -177,7 +177,7 @@ def open_main_window():
     if airline_icon:
         airline_btn.config(image=airline_icon)
         airline_btn.image = airline_icon
-    airline_btn.grid(row=0, column=1, padx=20, pady=8, sticky="nsew")
+    airline_btn.grid(row=0, column=1, padx=20, pady=10, sticky="nsew")
     airline_btn.bind("<Enter>", on_enter)
     airline_btn.bind("<Leave>", on_leave)
 
@@ -189,7 +189,7 @@ def open_main_window():
     if flight_icon:
         flight_btn.config(image=flight_icon)
         flight_btn.image = flight_icon
-    flight_btn.grid(row=1, column=0, columnspan=2, padx=30, pady=8, sticky="nsew")
+    flight_btn.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky="nsew")
     flight_btn.bind("<Enter>", on_enter)
     flight_btn.bind("<Leave>", on_leave)
 
