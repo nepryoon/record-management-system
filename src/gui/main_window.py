@@ -16,7 +16,9 @@ def open_main_window():
     root = tk.Tk()
     root.tk.call('tk', 'scaling', 1.0)
     root.title("Travel Record Management System")
-    root.geometry("1000x850") # Fixed window size 
+    root.geometry("700x650") # Initial window size 
+    root.minsize(600, 600)
+    root.update_idletasks()
     root.resizable(True, True) # Allow resizing for HiDPI display compatibility
     root.configure(bg="#f4f6f7") 
 
@@ -212,6 +214,8 @@ def open_main_window():
     exit_btn.pack(side="right", padx=10, pady=8)
 
     # Run the main loop
+    root.update_idletasks()
+    root.geometry(f"{root.winfo_reqwidth() + 40}x{root.winfo_reqheight() + 40}") # 40px padding to prevent clipping
     root.mainloop()
 
 if __name__ == "__main__":
