@@ -16,10 +16,10 @@ def open_main_window():
     root = tk.Tk()
     root.tk.call('tk', 'scaling', 1.0)
     root.title("Travel Record Management System")
-    WIN_W, WIN_H = 900, 620
+    WIN_W, WIN_H = 900, 680
     root.geometry(f"{WIN_W}x{WIN_H}")
     root.resizable(True, True)
-    root.minsize(900, 620)
+    root.minsize(900, 680)
     # Center on screen
     root.update_idletasks()
     screen_w = root.winfo_screenwidth()
