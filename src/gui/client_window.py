@@ -26,6 +26,8 @@ class ClientWindow(tk.Toplevel):
 
         # Focus behaviour
         self.transient(master)
+        self.lift()
+        self.focus_force()
         self.grab_set()
         self.focus()
 
@@ -290,7 +292,9 @@ class ClientWindow(tk.Toplevel):
         try:
             return int(self.entries["ID"].get())
         except ValueError:
-            messagebox.showwarning("Input Error", "ID must be a number.")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Input Error", "ID must be a number.", parent=self)
             return None
 
     def clear_form(self):
@@ -347,7 +351,9 @@ class ClientWindow(tk.Toplevel):
                 self.entries[field].config(highlightthickness=0)
 
         if missing: 
-            messagebox.showwarning("Validation", "Please fill all required fields.")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Validation", "Please fill all required fields.", parent=self)
             self.status.config(text="Validation failed: required fields missing.")
             return
         
@@ -355,7 +361,9 @@ class ClientWindow(tk.Toplevel):
         values = self.get_entry_values()
         is_valid, invalid_field = self.validate_entries(values)
         if not is_valid:
-                messagebox.showwarning("Validation Error", f"Invalid or missing value for '{invalid_field}'.")
+                self.lift()
+                self.focus_force()
+                messagebox.showwarning("Validation Error", f"Invalid or missing value for '{invalid_field}'.", parent=self)
                 self.entries[invalid_field].focus()
                 self.status.config(text=f"Validation failed: '{invalid_field}' invalid/missing.")
                 return
@@ -368,7 +376,9 @@ class ClientWindow(tk.Toplevel):
 
         # Check if ID already exists
         if any(r.get("Type") == "Client" and str(r.get("ID")) == str(cid) for r in self.records):
-            messagebox.showerror("Error", "Client ID already exists.")
+            self.lift()
+            self.focus_force()
+            messagebox.showerror("Error", "Client ID already exists.", parent=self)
             self.status.config(text="Duplicate ID. Client not created.")
             return
 
@@ -380,7 +390,9 @@ class ClientWindow(tk.Toplevel):
         self.populate_treeview()
         self.clear_form()
         self.status.config(text="✔ Client added successfully.")
-        messagebox.showinfo("Success", "✔ Client record added successfully.")
+        self.lift()
+        self.focus_force()
+        messagebox.showinfo("Success", "✔ Client record added successfully.", parent=self)
 
     # -----------------------------
     def search_client(self):
@@ -395,7 +407,9 @@ class ClientWindow(tk.Toplevel):
         record = next(
             (r for r in self.records if r.get("Type") == "Client" and str(r.get("ID")) == str(cid)), None)
         if not record:
-            messagebox.showinfo("Search", "Client not found.")
+            self.lift()
+            self.focus_force()
+            messagebox.showinfo("Search", "Client not found.", parent=self)
             self.status.config(text="✖ Client not found.")
             return
 
@@ -410,9 +424,12 @@ class ClientWindow(tk.Toplevel):
                     break
 
         if mismatch:
+            self.lift()
+            self.focus_force()
             messagebox.showwarning(
                 "Search",
-                "Client ID exists but some entered information does not match."
+                "Client ID exists but some entered information does not match.",
+                parent=self
            )
             self.status.config(text="✖ ID found but information mismatch.")
             return
@@ -432,7 +449,9 @@ class ClientWindow(tk.Toplevel):
                 break
 
         self.status.config(text=f"✔ Client '{record['Name']}' found.")
-        messagebox.showinfo("Search Result", f"✔ Client '{record['Name']}' found.")
+        self.lift()
+        self.focus_force()
+        messagebox.showinfo("Search Result", f"✔ Client '{record['Name']}' found.", parent=self)
 
     # -----------------------------
     def update_client(self):
@@ -445,7 +464,9 @@ class ClientWindow(tk.Toplevel):
         record = next(
         (r for r in self.records if r.get("Type") == "Client" and str(r.get("ID")) == str(cid)), None)
         if not record:
-            messagebox.showinfo("Update", "Client not found.")
+            self.lift()
+            self.focus_force()
+            messagebox.showinfo("Update", "Client not found.", parent=self)
             return
 
         # Save old ID for cascading update
@@ -457,7 +478,9 @@ class ClientWindow(tk.Toplevel):
         # Validate
         is_valid, invalid_field = self.validate_entries(values)
         if not is_valid:
-            messagebox.showwarning("Validation Error", f"Invalid or missing value for '{invalid_field}'.")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Validation Error", f"Invalid or missing value for '{invalid_field}'.", parent=self)
             self.entries[invalid_field].focus()
             self.status.config(text=f"Validation failed: '{invalid_field}' invalid/missing.")
             return
@@ -478,23 +501,30 @@ class ClientWindow(tk.Toplevel):
         self.populate_treeview()
         self.clear_form()
         self.status.config(text="✔ Client record updated successfully.")
-        messagebox.showinfo("Success", "✔ Client record updated successfully.")
+        self.lift()
+        self.focus_force()
+        messagebox.showinfo("Success", "✔ Client record updated successfully.", parent=self)
 
     # -----------------------------
     def delete_client(self):
         """Delete a client record after confirmation"""
         selected = self.tree.selection()
         if not selected:
-            messagebox.showwarning("Delete", "Select a client first")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Delete", "Select a client first", parent=self)
             return
 
         item = selected[0]
         values = self.tree.item(item, "values")
         client_id = str(values[0]) # Treat as string to match JSONL
 
+        self.lift()
+        self.focus_force()
         confirm = messagebox.askyesno(
             "Confirm Delete",
-            f"Delete Client {client_id} and ALL their flights?"
+            f"Delete Client {client_id} and ALL their flights?",
+            parent=self
         )
         if not confirm:
             return
@@ -509,7 +539,9 @@ class ClientWindow(tk.Toplevel):
         self.populate_treeview()
         self.tree.selection_remove(self.tree.selection())  # clear selection
         self.status.config(text=f"✔ Client {client_id} and related flights deleted.")
-        messagebox.showinfo("Deleted", "Client and associated flights removed.")
+        self.lift()
+        self.focus_force()
+        messagebox.showinfo("Deleted", "Client and associated flights removed.", parent=self)
 
     # ----------------------------------------------------------
     # Treeview Event

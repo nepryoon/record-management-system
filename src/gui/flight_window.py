@@ -28,6 +28,8 @@ class FlightWindow(tk.Toplevel):
 
         # Focus Management
         self.transient(master)
+        self.lift()
+        self.focus_force()
         self.grab_set()
         self.focus()
 
@@ -300,7 +302,9 @@ class FlightWindow(tk.Toplevel):
             client_id = self.entries["Client ID *"].get().strip()
             airline_id = self.entries["Airline ID *"].get().strip()
         except ValueError:
-            messagebox.showwarning("Input Error", "Client ID and Airline ID must be entered")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Input Error", "Client ID and Airline ID must be entered", parent=self)
             return
 
         date = self.entries["Date (YYYY-MM-DD HH:MM) *"].get().strip()
@@ -308,14 +312,18 @@ class FlightWindow(tk.Toplevel):
         end = self.entries["End City *"].get().strip()
 
         if not all([client_id, airline_id, date, start, end]):
-            messagebox.showwarning("Validation", "All fields must be filled")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Validation", "All fields must be filled", parent=self)
             return
 
         # validate date format
         try:
             datetime.strptime(date, "%Y-%m-%d %H:%M")
         except ValueError:
-            messagebox.showwarning("Date Error", "Use format: YYYY-MM-DD HH:MM")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Date Error", "Use format: YYYY-MM-DD HH:MM", parent=self)
             return
 
         # check client exists
@@ -324,7 +332,9 @@ class FlightWindow(tk.Toplevel):
             for r in self.records
         )
         if not client_exists:
-            messagebox.showerror("Error", f"Client ID {client_id} does not exist")
+            self.lift()
+            self.focus_force()
+            messagebox.showerror("Error", f"Client ID {client_id} does not exist", parent=self)
             return
 
         # check airline exists
@@ -333,7 +343,9 @@ class FlightWindow(tk.Toplevel):
             for r in self.records
         )
         if not airline_exists:
-            messagebox.showerror("Error", f"Airline ID {airline_id} does not exist")
+            self.lift()
+            self.focus_force()
+            messagebox.showerror("Error", f"Airline ID {airline_id} does not exist", parent=self)
             return
 
         record = {
@@ -350,7 +362,9 @@ class FlightWindow(tk.Toplevel):
         self.populate_treeview()
         self.clear_form()
         self.status.config(text="✔ Flight created successfully")
-        messagebox.showinfo("Success", "✔ Flight record added successfully")
+        self.lift()
+        self.focus_force()
+        messagebox.showinfo("Success", "✔ Flight record added successfully", parent=self)
 
     # -----------------------------
     def search_flight(self):
@@ -374,16 +388,22 @@ class FlightWindow(tk.Toplevel):
                         break
         if found:
             self.status.config(text=f"✔ Flights for Client ID {cid} found")
-            messagebox.showinfo("Search Result", f"✔ Flight for Client ID {cid} found")
+            self.lift()
+            self.focus_force()
+            messagebox.showinfo("Search Result", f"✔ Flight for Client ID {cid} found", parent=self)
         else:
-           messagebox.showinfo("Search", "✖ Flight not found")
+           self.lift()
+           self.focus_force()
+           messagebox.showinfo("Search", "✖ Flight not found", parent=self)
 
     # -----------------------------
     def update_flight(self):
         """Update an existing flight record"""
         selected = self.tree.selection()
         if not selected:
-            messagebox.showwarning("Update", "Select a flight first")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Update", "Select a flight first", parent=self)
             return
 
         item = selected[0]  # the selected row in the Treeview
@@ -400,7 +420,9 @@ class FlightWindow(tk.Toplevel):
                 record_to_update = r
                 break
         if not record_to_update:
-            messagebox.showerror("Error", "Could not find the record to update")
+            self.lift()
+            self.focus_force()
+            messagebox.showerror("Error", "Could not find the record to update", parent=self)
             return
 
         # Update fields from Entry widgets
@@ -413,18 +435,25 @@ class FlightWindow(tk.Toplevel):
         save_records(self.records)
         self.populate_treeview()
         self.status.config(text="✔ Flight record updated successfully.")
-        messagebox.showinfo("Success", "✔ Flight record updated successfully.")
+        self.lift()
+        self.focus_force()
+        messagebox.showinfo("Success", "✔ Flight record updated successfully.", parent=self)
 
     # -----------------------------
     def delete_flight(self):
         """Delete a flight record after confirmation"""
         selected = self.tree.selection()
         if not selected:
-            messagebox.showwarning("Delete", "Select a flight first")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Delete", "Select a flight first", parent=self)
             return
+        self.lift()
+        self.focus_force()
         confirm = messagebox.askyesno(
             "Confirm Delete",
-            f"Are you sure you want to delete selected flight?"
+            f"Are you sure you want to delete selected flight?",
+            parent=self
         )
         if not confirm:
             return
@@ -447,9 +476,13 @@ class FlightWindow(tk.Toplevel):
             self.populate_treeview()
             self.clear_form()
             self.status.config(text=f"✔ Flight deleted successfully.")
-            messagebox.showinfo("Delete Successful", f"✔ Flight was deleted successfully.")
+            self.lift()
+            self.focus_force()
+            messagebox.showinfo("Delete Successful", f"✔ Flight was deleted successfully.", parent=self)
         else: 
-            messagebox.showinfo("Delete", "Flight not found.")
+            self.lift()
+            self.focus_force()
+            messagebox.showinfo("Delete", "Flight not found.", parent=self)
 
     # ----------------------------------------------------------
     # Treeview Event
