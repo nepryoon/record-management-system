@@ -13,10 +13,10 @@ class RecordRepository:
 
     def _find_index(self, record_id: int, record_type: str) -> int:
         for i, r in enumerate(self.records):
-            if r.get("type") == record_type and r.get("id") == record_id:
+            if r.get("Type") == record_type and r.get("ID") == record_id:
                 return i
         raise RecordNotFoundError(
-            f"No {record_type} record found with id={record_id}."
+            f"No {record_type} record found with ID={record_id}."
         )
 
     # ------------------------------------------------------------------ #
@@ -25,20 +25,20 @@ class RecordRepository:
 
     def add(self, record: dict) -> None:
         """Add a new record. Raises DuplicateRecordError if it already exists."""
-        record_type = record.get("type")
-        record_id = record.get("id")
+        record_type = record.get("Type")
+        record_id = record.get("ID")
         if record_id is not None:
             try:
                 self._find_index(record_id, record_type)
                 raise DuplicateRecordError(
-                    f"A {record_type} record with id={record_id} already exists."
+                    f"A {record_type} record with ID={record_id} already exists."
                 )
             except RecordNotFoundError:
-                pass  # expected — record does not exist yet
+                pass  # Expected — record does not exist yet.
         self.records.append(record)
 
     def delete(self, record_id: int, record_type: str) -> None:
-        """Delete a record by id and type. Raises RecordNotFoundError if missing."""
+        """Delete a record by ID and Type. Raises RecordNotFoundError if missing."""
         index = self._find_index(record_id, record_type)
         self.records.pop(index)
 
@@ -48,9 +48,9 @@ class RecordRepository:
         self.records[index].update(updates)
 
     def search(self, **kwargs) -> list[dict]:
-        """
-        Return all records matching every key-value pair supplied.
-        Example: search(type="client", city="London")
+        """Return all records matching every key-value pair supplied.
+
+        Example: ``search(Type="Client", City="London")``
         """
         results = self.records
         for key, value in kwargs.items():
