@@ -19,7 +19,7 @@ class AirlineWindow(tk.Toplevel):
         # ----------------------------------------------------------
         # Window configuration
         self.title("Airline Management System")
-        WIN_W, WIN_H = 1280, 800
+        WIN_W, WIN_H = 1300, 820
         self.resizable(True, True)
         self.minsize(WIN_W, WIN_H)
         self.update_idletasks()
