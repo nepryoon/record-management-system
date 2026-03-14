@@ -197,14 +197,14 @@ class FlightWindow(tk.Toplevel):
             btn_frame.columnconfigure(i, weight=1)
 
         # ----------------------------------------------------------
-        # Treeview Tabl
+        # Treeview Table
         table_frame = tk.Frame(main, bg="white")
-        table_frame.pack(fill="both", expand=True, pady=12)
+        table_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         columns = ("CLIENT ID", "AIRLINE ID", "DATE", "START CITY", "END CITY")
         col_widths = {
             "CLIENT ID": 100, "AIRLINE ID": 100, "DATE": 200,
-            "START CITY": 150, "END CITY": 150
+            "START CITY": 180, "END CITY": 180
         }
         # Treeview columns
         self.tree = ttk.Treeview(
