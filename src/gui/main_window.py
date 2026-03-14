@@ -59,7 +59,7 @@ def open_main_window():
     mon_w = phys_w // monitors  # Approximate width of a single monitor in pixels
 
     # Target visual size in device-independent pixels
-    TARGET_W, TARGET_H = 1024, 768
+    TARGET_W, TARGET_H = 600, 600
 
     # Scale up the target dimensions to compensate for HiDPI compositor scaling.
     # Clamp to the monitor bounds to avoid the window exceeding screen edges.
@@ -91,20 +91,20 @@ def open_main_window():
     tk.Label(
         header_frame,
         text="TRAVEL RECORD MANAGEMENT SYSTEM",
-        font=("Arial", 20, "bold"),
+        font=("Arial", 16, "bold"),
         fg="white",
         bg="#2c3e50",
-        wraplength=960,   # Wrap the title if the window is narrower than 960px
+        wraplength=560,   # Wrap the title if the window is narrower than 560px
         justify="center"
-    ).pack(pady=(16, 4), fill="x", expand=True)
+    ).pack(pady=(12, 4), fill="x", expand=True)
 
     tk.Label(
         header_frame,
         text="Select a module to manage system records",
-        font=("Arial", 12),
+        font=("Arial", 11),
         fg="#d6eaf8",     # Light blue to contrast against the dark header
         bg="#2c3e50"
-    ).pack(pady=(0, 16))
+    ).pack(pady=(0, 12))
 
     # ----------------------------------------------------------
     # Footer frame
@@ -160,7 +160,7 @@ def open_main_window():
     # whilst Flights spans the full width on the second row.
     # ----------------------------------------------------------
     actions_frame = tk.Frame(root, bg="#f4f6f7")
-    actions_frame.pack(expand=True, fill="both", padx=20, pady=10)
+    actions_frame.pack(expand=True, fill="both", padx=15, pady=8)
 
     # Both columns expand equally when the window is resized
     actions_frame.grid_columnconfigure(0, weight=1)
@@ -183,17 +183,18 @@ def open_main_window():
 
     # ----------------------------------------------------------
     # Shared button style dictionary
-    # Applied to all three module buttons for visual consistency
+    # Applied to all three module buttons for visual consistency.
+    # Font and padding are scaled down to suit the 600x600 window.
     # ----------------------------------------------------------
     btn_style = {
-        "font"    : ("Arial", 16, "bold"),
+        "font"    : ("Arial", 13, "bold"),
         "fg"      : "white",
         "bg"      : "#34495e",   # Dark blue-grey background
         "relief"  : "raised",
         "bd"      : 3,
         "compound": "top",       # Icon rendered above the button label
-        "padx"    : 20,
-        "pady"    : 16,
+        "padx"    : 10,
+        "pady"    : 10,
         "cursor"  : "hand2"      # Pointer cursor to indicate interactivity
     }
 
@@ -259,7 +260,7 @@ def open_main_window():
     if client_icon:
         client_btn.config(image=client_icon)
         client_btn.image = client_icon  # Retain reference to prevent garbage collection
-    client_btn.grid(row=0, column=0, padx=20, pady=10, sticky="nsew")
+    client_btn.grid(row=0, column=0, padx=10, pady=8, sticky="nsew")
     client_btn.bind("<Enter>", on_enter)
     client_btn.bind("<Leave>", on_leave)
 
@@ -273,7 +274,7 @@ def open_main_window():
     if airline_icon:
         airline_btn.config(image=airline_icon)
         airline_btn.image = airline_icon
-    airline_btn.grid(row=0, column=1, padx=20, pady=10, sticky="nsew")
+    airline_btn.grid(row=0, column=1, padx=10, pady=8, sticky="nsew")
     airline_btn.bind("<Enter>", on_enter)
     airline_btn.bind("<Leave>", on_leave)
 
@@ -287,7 +288,7 @@ def open_main_window():
     if flight_icon:
         flight_btn.config(image=flight_icon)
         flight_btn.image = flight_icon
-    flight_btn.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky="nsew")
+    flight_btn.grid(row=1, column=0, columnspan=2, padx=10, pady=8, sticky="nsew")
     flight_btn.bind("<Enter>", on_enter)
     flight_btn.bind("<Leave>", on_leave)
 
@@ -296,20 +297,20 @@ def open_main_window():
     # Packed right-to-left: Help appears outermost, Exit next to it
     # ----------------------------------------------------------
     help_btn = tk.Button(
-        footer_frame, text="Help", width=14,
+        footer_frame, text="Help", width=12,
         bg="#7f8c8d", fg="white",
-        font=("Arial", 11, "bold"),
+        font=("Arial", 10, "bold"),
         command=show_help
     )
-    help_btn.pack(side="right", padx=10, pady=8)
+    help_btn.pack(side="right", padx=8, pady=6)
 
     exit_btn = tk.Button(
-        footer_frame, text="Exit", width=14,
+        footer_frame, text="Exit", width=12,
         bg="#e74c3c", fg="white",   # Red background to signal a destructive action
-        font=("Arial", 11, "bold"),
+        font=("Arial", 10, "bold"),
         command=confirm_exit
     )
-    exit_btn.pack(side="right", padx=10, pady=8)
+    exit_btn.pack(side="right", padx=8, pady=6)
 
     # ----------------------------------------------------------
     # Start the tkinter event loop
