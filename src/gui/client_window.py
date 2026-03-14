@@ -20,8 +20,17 @@ class ClientWindow(tk.Toplevel):
         # ----------------------------------------------------------
         # Window configuration
         self.title("Client Record System")
-        self.geometry("1100x800")
-        self.resizable(False, False) # Prevent resizing to maintain layout
+        WIN_W, WIN_H = 1100, 650
+        self.geometry(f"{WIN_W}x{WIN_H}")
+        self.resizable(True, True)
+        self.minsize(1100, 600)
+        # Center on screen
+        self.update_idletasks()
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        x = (screen_w - WIN_W) // 2
+        y = (screen_h - WIN_H) // 2
+        self.geometry(f"{WIN_W}x{WIN_H}+{x}+{y}")
         self.configure(bg="#f4f6f7")
 
         # Focus behaviour

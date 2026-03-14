@@ -22,9 +22,18 @@ class FlightWindow(tk.Toplevel):
         # ----------------------------------------------------------
         # Window configuration
         self.title("Flight Record System")
-        self.geometry("1000x700")
+        WIN_W, WIN_H = 1100, 650
+        self.geometry(f"{WIN_W}x{WIN_H}")
+        self.resizable(True, True)
+        self.minsize(1100, 600)
+        # Center on screen
+        self.update_idletasks()
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        x = (screen_w - WIN_W) // 2
+        y = (screen_h - WIN_H) // 2
+        self.geometry(f"{WIN_W}x{WIN_H}+{x}+{y}")
         self.configure(bg="#f4f6f7")
-        self.resizable(False, False) # Fixed size
 
         # Focus Management
         self.transient(master)
