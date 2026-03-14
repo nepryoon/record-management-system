@@ -53,6 +53,20 @@ class FlightWindow(tk.Toplevel):
         self.style.map("Treeview", background=[("selected", "#3498db")])
         self.style.configure("Treeview", font=("Arial", 12))
         self.style.configure("Treeview.Heading", font=("Arial", 13, "bold"))
+        self.style.configure("Vertical.TScrollbar",
+                             gripcount=0,
+                             background="#5d6d7e",
+                             troughcolor="#ecf0f1",
+                             bordercolor="#ecf0f1",
+                             arrowcolor="white",
+                             width=18)
+        self.style.configure("Horizontal.TScrollbar",
+                             gripcount=0,
+                             background="#5d6d7e",
+                             troughcolor="#ecf0f1",
+                             bordercolor="#ecf0f1",
+                             arrowcolor="white",
+                             width=18)
 
         # ----------------------------------------------------------
         # Load Flight Icon
