@@ -25,6 +25,8 @@ class AirlineWindow(tk.Toplevel):
 
         # Focus Management
         self.transient(master)
+        self.lift()
+        self.focus_force()
         self.grab_set()
         self.focus()
 
@@ -269,18 +271,24 @@ class AirlineWindow(tk.Toplevel):
         try:
             aid = int(self.id_entry.get().strip())
         except ValueError:
-            messagebox.showwarning("Input Error", "ID must be a number.")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Input Error", "ID must be a number.", parent=self)
             return
 
         name = self.name_entry.get().strip()
         if not name:
-            messagebox.showwarning("Validation", "Company Name is required.")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Validation", "Company Name is required.", parent=self)
             return
         
         # Check duplicate
         for r in self.records:
             if r.get("ID") == aid and r.get("Type") == "Airline":
-                messagebox.showerror("Error", "Airline ID already exists.")
+                self.lift()
+                self.focus_force()
+                messagebox.showerror("Error", "Airline ID already exists.", parent=self)
                 return
 
         new_airline = {
@@ -293,7 +301,9 @@ class AirlineWindow(tk.Toplevel):
         self.populate_treeview()
         self.clear_form()
         self.status.config(text="✔ Airline created successfully")
-        messagebox.showinfo("Success", "✔ Airline added successfully.")
+        self.lift()
+        self.focus_force()
+        messagebox.showinfo("Success", "✔ Airline added successfully.", parent=self)
 
     # -----------------------------
     def search_airline(self):
@@ -302,15 +312,20 @@ class AirlineWindow(tk.Toplevel):
         name = self.name_entry.get().strip()
         # ID must be provided
         if not aid:
+            self.lift()
+            self.focus_force()
             messagebox.showwarning(
                 "Search",
-                "Please enter Airline ID to search. Company Name alone is not enough."
+                "Please enter Airline ID to search. Company Name alone is not enough.",
+                parent=self
             )
             return
         # Search for record with this ID
         record = next((r for r in self.records if str(r.get("ID")) == str(aid) and r.get("Type") == "Airline"), None)
         if not record:
-            messagebox.showinfo("Search", f"Airline ID {aid} not found.")
+            self.lift()
+            self.focus_force()
+            messagebox.showinfo("Search", f"Airline ID {aid} not found.", parent=self)
             return
         # ID exists
         if not name:
@@ -328,7 +343,9 @@ class AirlineWindow(tk.Toplevel):
                     self.tree.see(item)
                     break
             self.status.config(text=f"✔ Airline '{record['Company Name']}' found")
-            messagebox.showinfo("Search Result", f"✔ Airline {aid} found.")
+            self.lift()
+            self.focus_force()
+            messagebox.showinfo("Search Result", f"✔ Airline {aid} found.", parent=self)
             return
         # Both ID and Name provided: verify match
         if record["Company Name"].lower() == name.lower():
@@ -346,12 +363,17 @@ class AirlineWindow(tk.Toplevel):
                     self.tree.see(item)
                     break
             self.status.config(text=f"✔ Airline '{record['Company Name']}' found")
-            messagebox.showinfo("Search Result", f"✔ Airline {aid} found.")
+            self.lift()
+            self.focus_force()
+            messagebox.showinfo("Search Result", f"✔ Airline {aid} found.", parent=self)
         else:
             # ID exists but Name does not match
+            self.lift()
+            self.focus_force()
             messagebox.showwarning(
                 "Search",
-                f"Airline ID {aid} exists but Company Name does not match."
+                f"Airline ID {aid} exists but Company Name does not match.",
+                parent=self
             )
             self.status.config(text=f"✖ ID exists but Name mismatch")
 
@@ -361,10 +383,14 @@ class AirlineWindow(tk.Toplevel):
         aid = self.id_entry.get().strip()
         name = self.name_entry.get().strip()
         if not aid:
-            messagebox.showwarning("Update", "Enter Airline ID.")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Update", "Enter Airline ID.", parent=self)
             return
         if not name:
-            messagebox.showwarning("Update", "Enter Company Name.")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Update", "Enter Company Name.", parent=self)
             return
         for r in self.records:
             if str(r.get("ID")) == str(aid) and r.get("Type") == "Airline":
@@ -374,24 +400,33 @@ class AirlineWindow(tk.Toplevel):
                 self.populate_treeview()
                 self.clear_form()
                 self.status.config(text=f"✔ Airline {aid} updated successfully")
-                messagebox.showinfo("Update Successful", f"✔ Airline {aid} updated.")
+                self.lift()
+                self.focus_force()
+                messagebox.showinfo("Update Successful", f"✔ Airline {aid} updated.", parent=self)
                 return
-        messagebox.showinfo("Update", "Airline not found.")
+        self.lift()
+        self.focus_force()
+        messagebox.showinfo("Update", "Airline not found.", parent=self)
 
     # -----------------------------
     def delete_airline(self):
         "Delete an airline record after confirmation"
         selected = self.tree.selection()
         if not selected:
-            messagebox.showwarning("Delete", "Select an airline first")
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Delete", "Select an airline first", parent=self)
             return
         item = selected[0]
         values = self.tree.item(item, "values")
         airline_id = int(values[0])
 
+        self.lift()
+        self.focus_force()
         confirm = messagebox.askyesno(
             "Confirm Delete",
-            f"Delete Airline {airline_id} and ALL related flights?"
+            f"Delete Airline {airline_id} and ALL related flights?",
+            parent=self
         )
         if not confirm:
             return
@@ -411,7 +446,9 @@ class AirlineWindow(tk.Toplevel):
         self.populate_treeview()
         self.clear_form()
         self.status.config(text=f"✔ Airline {airline_id} and related flights deleted.")
-        messagebox.showinfo("Deleted", "Airline and associated flights removed.")
+        self.lift()
+        self.focus_force()
+        messagebox.showinfo("Deleted", "Airline and associated flights removed.", parent=self)
 
     # ----------------------------------------------------------
     # Treeview Event

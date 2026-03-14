@@ -70,7 +70,9 @@ def open_main_window():
 
     def confirm_exit():
         """Confirm before closing the main window"""
-        if messagebox.askyesno("Exit", "Are you sure you want to exit?"):
+        root.lift()
+        root.focus_force()
+        if messagebox.askyesno("Exit", "Are you sure you want to exit?", parent=root):
             root.destroy()
 
     # ----------------------------------------------------------
@@ -140,12 +142,15 @@ def open_main_window():
         flight_window.protocol("WM_DELETE_WINDOW", on_flight_close)
 
     def show_help():
+        root.lift()
+        root.focus_force()
         messagebox.showinfo(
             "Help",
             "Select a module to manage records.\n\n"
             "Clients - Manage customer records\n"
             "Airlines - Manage airline companies\n"
-            "Flights - Manage flight information" 
+            "Flights - Manage flight information",
+            parent=root
         )
     
     # ----------------------------------------------------------
