@@ -13,6 +13,7 @@ from .flight_window import FlightWindow
 def open_main_window():
     """Initializes the primary dashboard for the Travel Management System."""
     root = tk.Tk()
+    root.tk.call('tk', 'scaling', 1.0)  # disable HiDPI auto-scaling
     root.title("Travel Record Management System")
     root.configure(bg="#f4f6f7")
 
