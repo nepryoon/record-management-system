@@ -114,7 +114,7 @@ class ClientWindow(tk.Toplevel):
             troughcolor="#ecf0f1",
             bordercolor="#ecf0f1",
             arrowcolor="white",
-            width=22   # Wider than the default for easier grabbing
+            width=22  # Wider than the default for easier grabbing
         )
         self.style.configure(
             "Horizontal.TScrollbar",
@@ -147,9 +147,9 @@ class ClientWindow(tk.Toplevel):
         # ----------------------------------------------------------
         # Event bindings
         # ----------------------------------------------------------
-        self.protocol("WM_DELETE_WINDOW", self.on_close)              # Save on close
-        self.bind("<Return>", lambda event: self.create_client())      # Enter key creates a record
-        self.entries["ID"].focus_set()                                 # Initial focus on the ID field
+        self.protocol("WM_DELETE_WINDOW", self.on_close)          # Save on close
+        self.bind("<Return>", lambda event: self.create_client())  # Enter key creates a record
+        self.entries["ID"].focus_set()                            # Initial focus on the ID field
 
     # ----------------------------------------------------------
     # GUI construction
@@ -282,11 +282,11 @@ class ClientWindow(tk.Toplevel):
             "ID", "NAME", "ADDRESS 1", "ADDRESS 2", "ADDRESS 3",
             "CITY", "STATE", "ZIP CODE", "COUNTRY", "PHONE NUMBER"
         )
-        col_widths = {
-            "ID": 50, "NAME": 140, "ADDRESS 1": 120, "ADDRESS 2": 120,
-            "ADDRESS 3": 120, "CITY": 100, "STATE": 80,
-            "ZIP CODE": 80, "COUNTRY": 100, "PHONE NUMBER": 120
-        }
+
+        # All 10 columns share the same width; stretch=True ensures they
+        # expand proportionally when the window is resized
+        col_width = 130
+        col_widths = {col: col_width for col in columns}
 
         self.tree = ttk.Treeview(
             table_frame,
@@ -301,13 +301,12 @@ class ClientWindow(tk.Toplevel):
 
         for col in columns:
             self.tree.heading(col, text=col)
-            stretch = col == "NAME"  # Only the Name column stretches
             self.tree.column(
                 col,
                 anchor="center",
                 width=col_widths[col],
                 minwidth=col_widths[col],
-                stretch=stretch
+                stretch=True  # All columns expand equally when the window is resized
             )
 
         # Horizontal scrollbar — packed before the tree so it appears below
@@ -370,7 +369,6 @@ class ClientWindow(tk.Toplevel):
         Shows an empty-state label when no records are present and
         updates the total client counter.
         """
-        # Remove all existing rows
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -469,7 +467,6 @@ class ClientWindow(tk.Toplevel):
         Validate the form and create a new client record.
         Highlights any missing required fields in red before saving.
         """
-        # Highlight missing required fields
         missing = []
         for field in self.required_fields:
             if not self.entries[field].get().strip():
