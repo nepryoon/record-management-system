@@ -209,15 +209,15 @@ class ClientWindow(tk.Toplevel):
         # ----------------------------------------------------------
         # Treeview Table
         table_frame = tk.Frame(main, bg="white")
-        table_frame.pack(fill="both", expand=True, pady=12)
+        table_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         columns = (
             "ID", "NAME", "ADDRESS 1", "ADDRESS 2", "ADDRESS 3",
             "CITY", "STATE", "ZIP CODE", "COUNTRY", "PHONE NUMBER"
         )
         col_widths = {
-            "ID": 50, "NAME": 120, "ADDRESS 1": 130, "ADDRESS 2": 130,
-            "ADDRESS 3": 130, "CITY": 100, "STATE": 80, "ZIP CODE": 80,
+            "ID": 50, "NAME": 140, "ADDRESS 1": 120, "ADDRESS 2": 120,
+            "ADDRESS 3": 120, "CITY": 100, "STATE": 80, "ZIP CODE": 80,
             "COUNTRY": 100, "PHONE NUMBER": 120
         }
         # Treeview columns
@@ -233,7 +233,8 @@ class ClientWindow(tk.Toplevel):
 
         for col in columns:
             self.tree.heading(col, text=col)
-            self.tree.column(col, anchor="center", width=col_widths[col], minwidth=col_widths[col])
+            stretch = col == "NAME"
+            self.tree.column(col, anchor="center", width=col_widths[col], minwidth=col_widths[col], stretch=stretch)
 
         # Horizontal scrollbar
         xscroll = ttk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
