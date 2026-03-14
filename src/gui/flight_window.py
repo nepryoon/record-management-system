@@ -189,7 +189,11 @@ class FlightWindow(tk.Toplevel):
         table_frame = tk.Frame(main, bg="white")
         table_frame.pack(fill="both", expand=True, pady=12)
 
-        columns = ("Client ID", "Airline ID", "Date", "Start City", "End City")
+        columns = ("CLIENT ID", "AIRLINE ID", "DATE", "START CITY", "END CITY")
+        col_widths = {
+            "CLIENT ID": 100, "AIRLINE ID": 100, "DATE": 200,
+            "START CITY": 150, "END CITY": 150
+        }
         # Treeview columns
         self.tree = ttk.Treeview(
             table_frame,
@@ -203,17 +207,22 @@ class FlightWindow(tk.Toplevel):
 
         for col in columns:
             self.tree.heading(col, text=col)
-            self.tree.column(col, anchor="center", width=190)
+            self.tree.column(col, anchor="center", width=col_widths[col], minwidth=col_widths[col])
 
-        # Scrollbar for Treeview
+        # Horizontal scrollbar
+        xscroll = ttk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(xscrollcommand=xscroll.set)
+        xscroll.pack(side="bottom", fill="x")
+
+        # Vertical scrollbar for Treeview
         scrollbar = ttk.Scrollbar(
             table_frame,
             orient="vertical",
             command=self.tree.yview
         )
         self.tree.configure(yscrollcommand=scrollbar.set)
-        self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+        self.tree.pack(fill="both", expand=True)
 
         # Bind table selection
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
