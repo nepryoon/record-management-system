@@ -19,14 +19,17 @@ class AirlineWindow(tk.Toplevel):
         # ----------------------------------------------------------
         # Window configuration
         self.title("Airline Management System")
-        WIN_W, WIN_H = 1150, 720
-        self.geometry(f"{WIN_W}x{WIN_H}")
+        WIN_W, WIN_H = 1280, 800
         self.resizable(True, True)
-        self.minsize(1150, 720)
-        # Center relative to master for correct multi-monitor behavior
+        self.minsize(WIN_W, WIN_H)
         self.update_idletasks()
-        x = master.winfo_rootx() + (master.winfo_width() - WIN_W) // 2
-        y = master.winfo_rooty() + (master.winfo_height() - WIN_H) // 2
+        ptr_x  = self.winfo_pointerx()
+        full_w = self.winfo_screenwidth()
+        mon_w  = full_w // 2 if self.winfo_screenwidth() != self.winfo_vrootwidth() else full_w
+        mon_h  = self.winfo_screenheight()
+        mon_x  = mon_w if ptr_x >= mon_w else 0
+        x = mon_x + (mon_w - WIN_W) // 2
+        y = (mon_h - WIN_H) // 2
         self.geometry(f"{WIN_W}x{WIN_H}+{x}+{y}")
         self.configure(bg="#f4f6f7") # Light background for readability
 
@@ -55,7 +58,7 @@ class AirlineWindow(tk.Toplevel):
                              troughcolor="#ecf0f1",
                              bordercolor="#ecf0f1",
                              arrowcolor="white",
-                             width=18)
+                             width=22)
         self.style.configure("Horizontal.TScrollbar",
                              gripcount=0,
                              background="#5d6d7e",
