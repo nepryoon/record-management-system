@@ -17,8 +17,8 @@ def open_main_window():
     root.configure(bg="#f4f6f7")
 
     # ----------------------------------------------------------
-    # Window size and centering (cross-platform, single/dual monitor safe)
-    WIN_W, WIN_H = 700, 620
+    # Window size and centering
+    WIN_W, WIN_H = 700, 780
     root.resizable(True, True)
     root.minsize(WIN_W, WIN_H)
     root.update_idletasks()
@@ -29,27 +29,27 @@ def open_main_window():
     root.geometry(f"{WIN_W}x{WIN_H}+{x}+{y}")
 
     # ----------------------------------------------------------
-    # Header Frame — padding ridotto per non sprecare spazio verticale
-    header_frame = tk.Frame(root, bg="#2c3e50", pady=10)
+    # Header Frame
+    header_frame = tk.Frame(root, bg="#2c3e50")
     header_frame.pack(fill="x")
 
     tk.Label(
         header_frame,
         text="TRAVEL RECORD MANAGEMENT SYSTEM",
-        font=("Arial", 20, "bold"),
+        font=("Arial", 16, "bold"),
         fg="white",
         bg="#2c3e50",
         wraplength=660,
         justify="center"
-    ).pack(pady=(10, 4), fill="x", expand=True)
+    ).pack(pady=(12, 2), fill="x", expand=True)
 
     tk.Label(
         header_frame,
         text="Select a module to manage system records",
-        font=("Arial", 12),
+        font=("Arial", 11),
         fg="#d6eaf8",
         bg="#2c3e50"
-    ).pack(pady=(0, 10))
+    ).pack(pady=(0, 12))
 
     # ----------------------------------------------------------
     # Footer
@@ -89,10 +89,8 @@ def open_main_window():
 
     # ----------------------------------------------------------
     # Action Buttons Frame
-    # pady ridotto da 60 a 10: era il principale responsabile
-    # del taglio del pulsante Flights
-    actions_frame = tk.Frame(root, bg="#f4f6f7", pady=10)
-    actions_frame.pack(expand=True, fill="both")
+    actions_frame = tk.Frame(root, bg="#f4f6f7")
+    actions_frame.pack(expand=True, fill="both", padx=20, pady=10)
     actions_frame.grid_columnconfigure(0, weight=1)
     actions_frame.grid_columnconfigure(1, weight=1)
     actions_frame.grid_rowconfigure(0, weight=1)
@@ -107,7 +105,7 @@ def open_main_window():
         e.widget.config(bg="#34495e", relief="raised", bd=3)
 
     # ----------------------------------------------------------
-    # Common Button Style — pady ridotto da 20 a 12
+    # Common Button Style
     btn_style = {
         "font": ("Arial", 15, "bold"),
         "fg": "white",
@@ -116,7 +114,7 @@ def open_main_window():
         "bd": 3,
         "compound": "top",
         "padx": 20,
-        "pady": 12,
+        "pady": 10,
         "cursor": "hand2"
     }
 
@@ -167,7 +165,7 @@ def open_main_window():
     if client_icon:
         client_btn.config(image=client_icon)
         client_btn.image = client_icon
-    client_btn.grid(row=0, column=0, padx=30, pady=12, sticky="nsew")
+    client_btn.grid(row=0, column=0, padx=20, pady=8, sticky="nsew")
     client_btn.bind("<Enter>", on_enter)
     client_btn.bind("<Leave>", on_leave)
 
@@ -179,7 +177,7 @@ def open_main_window():
     if airline_icon:
         airline_btn.config(image=airline_icon)
         airline_btn.image = airline_icon
-    airline_btn.grid(row=0, column=1, padx=30, pady=12, sticky="nsew")
+    airline_btn.grid(row=0, column=1, padx=20, pady=8, sticky="nsew")
     airline_btn.bind("<Enter>", on_enter)
     airline_btn.bind("<Leave>", on_leave)
 
@@ -191,7 +189,7 @@ def open_main_window():
     if flight_icon:
         flight_btn.config(image=flight_icon)
         flight_btn.image = flight_icon
-    flight_btn.grid(row=1, column=0, columnspan=2, padx=50, pady=12, sticky="nsew")
+    flight_btn.grid(row=1, column=0, columnspan=2, padx=30, pady=8, sticky="nsew")
     flight_btn.bind("<Enter>", on_enter)
     flight_btn.bind("<Leave>", on_leave)
 
