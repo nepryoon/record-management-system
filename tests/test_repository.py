@@ -10,14 +10,14 @@ def repo():
 
 @pytest.fixture
 def client_record():
-    return {"type": "client", "id": 1, "name": "Alice", "city": "London"}
+    return {"Type": "Client", "ID": 1, "Name": "Alice", "City": "London"}
 
 
 def test_add_and_search(repo, client_record):
     repo.add(client_record)
-    results = repo.search(type="client", id=1)
+    results = repo.search(Type="Client", ID=1)
     assert len(results) == 1
-    assert results[0]["name"] == "Alice"
+    assert results[0]["Name"] == "Alice"
 
 
 def test_add_duplicate_raises(repo, client_record):
@@ -28,30 +28,30 @@ def test_add_duplicate_raises(repo, client_record):
 
 def test_delete_record(repo, client_record):
     repo.add(client_record)
-    repo.delete(1, "client")
-    assert repo.search(type="client", id=1) == []
+    repo.delete(1, "Client")
+    assert repo.search(Type="Client", ID=1) == []
 
 
 def test_delete_nonexistent_raises(repo):
     with pytest.raises(RecordNotFoundError):
-        repo.delete(999, "client")
+        repo.delete(999, "Client")
 
 
 def test_update_record(repo, client_record):
     repo.add(client_record)
-    repo.update(1, "client", {"city": "Manchester"})
-    assert repo.search(id=1)[0]["city"] == "Manchester"
+    repo.update(1, "Client", {"City": "Manchester"})
+    assert repo.search(ID=1)[0]["City"] == "Manchester"
 
 
 def test_update_nonexistent_raises(repo):
     with pytest.raises(RecordNotFoundError):
-        repo.update(999, "client", {"name": "Bob"})
+        repo.update(999, "Client", {"Name": "Bob"})
 
 
 def test_search_by_arbitrary_field(repo):
-    repo.add({"type": "client", "id": 1, "city": "London"})
-    repo.add({"type": "client", "id": 2, "city": "Rome"})
-    assert len(repo.search(city="London")) == 1
+    repo.add({"Type": "Client", "ID": 1, "City": "London"})
+    repo.add({"Type": "Client", "ID": 2, "City": "Rome"})
+    assert len(repo.search(City="London")) == 1
 
 
 def test_get_all(repo, client_record):

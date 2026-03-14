@@ -35,22 +35,28 @@ class TestCreateFlight:
     def test_fields_stored_correctly(self):
         records = _sample_records()
         rec = _make_flight(records)
-        assert rec["client_id"] == 1
-        assert rec["airline_id"] == 10
-        assert rec["date"] == DATE
-        assert rec["start_city"] == "London"
-        assert rec["end_city"] == "Rome"
+        assert rec["Client_ID"] == 1
+        assert rec["Airline_ID"] == 10
+        assert rec["Date"] == DATE
+        assert rec["Start City"] == "London"
+        assert rec["End City"] == "Rome"
 
     def test_type_is_flight(self):
         records = _sample_records()
         rec = _make_flight(records)
-        assert rec["type"] == "flight"
+        assert rec["Type"] == "Flight"
 
     def test_multiple_flights_added(self):
         records = _sample_records()
         _make_flight(records, date=DATE)
         _make_flight(records, client_id=2, date=DATE2)
         assert len(records) == 2
+
+    def test_canonical_schema_keys_present(self):
+        """Verify all brief-mandated field names are present in the record dict."""
+        records = _sample_records()
+        rec = _make_flight(records)
+        assert set(rec.keys()) == {"Type", "Client_ID", "Airline_ID", "Date", "Start City", "End City"}
 
 
 # ── delete ──────────────────────────────────────────────────────────────────
@@ -74,7 +80,7 @@ class TestDeleteFlight:
         _make_flight(records, client_id=2, date=DATE2)
         delete_flight(records, client_id=1, airline_id=10, date=DATE)
         assert len(records) == 1
-        assert records[0]["client_id"] == 2
+        assert records[0]["Client_ID"] == 2
 
 
 # ── update ──────────────────────────────────────────────────────────────────
@@ -85,21 +91,21 @@ class TestUpdateFlight:
         records = _sample_records()
         _make_flight(records)
         update_flight(records, client_id=1, airline_id=10, date=DATE,
-                      end_city="Paris")
-        assert records[0]["end_city"] == "Paris"
+                      **{"End City": "Paris"})
+        assert records[0]["End City"] == "Paris"
 
     def test_nonexistent_record_raises(self):
         records = _sample_records()
         with pytest.raises(RecordNotFoundError):
             update_flight(records, client_id=99, airline_id=99, date=DATE,
-                          end_city="Paris")
+                          **{"End City": "Paris"})
 
     def test_other_fields_unchanged(self):
         records = _sample_records()
         _make_flight(records)
         update_flight(records, client_id=1, airline_id=10, date=DATE,
-                      end_city="Paris")
-        assert records[0]["start_city"] == "London"
+                      **{"End City": "Paris"})
+        assert records[0]["Start City"] == "London"
 
 
 # ── search ──────────────────────────────────────────────────────────────────
@@ -110,14 +116,14 @@ class TestSearchFlights:
         records = _sample_records()
         _make_flight(records, client_id=1, start_city="London")
         _make_flight(records, client_id=2, start_city="Paris", date=DATE2)
-        results = search_flights(records, start_city="London")
+        results = search_flights(records, **{"Start City": "London"})
         assert len(results) == 1
-        assert results[0]["client_id"] == 1
+        assert results[0]["Client_ID"] == 1
 
     def test_empty_result_when_no_match(self):
         records = _sample_records()
         _make_flight(records)
-        assert search_flights(records, start_city="NoSuchCity") == []
+        assert search_flights(records, **{"Start City": "NoSuchCity"}) == []
 
     def test_returns_all_when_no_filter(self):
         records = _sample_records()

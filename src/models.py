@@ -1,11 +1,13 @@
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import ClassVar
 
 
 @dataclass
 class ClientRecord:
-    TYPE: ClassVar[str] = "client"
+    """Dataclass representing a Client record."""
+
+    TYPE: ClassVar[str] = "Client"
 
     id: int
     name: str
@@ -23,17 +25,43 @@ class ClientRecord:
         self.type = self.TYPE
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        """Return the record as a dictionary using the canonical schema field names."""
+        return {
+            "ID": self.id,
+            "Type": self.type,
+            "Name": self.name,
+            "Address Line 1": self.address_line_1,
+            "Address Line 2": self.address_line_2,
+            "Address Line 3": self.address_line_3,
+            "City": self.city,
+            "State": self.state,
+            "Zip Code": self.zip_code,
+            "Country": self.country,
+            "Phone Number": self.phone_number,
+        }
 
     @classmethod
     def from_dict(cls, data: dict) -> "ClientRecord":
-        d = {k: v for k, v in data.items() if k != "type"}
-        return cls(**d)
+        """Construct a ClientRecord from a canonical schema dictionary."""
+        return cls(
+            id=data["ID"],
+            name=data["Name"],
+            address_line_1=data["Address Line 1"],
+            address_line_2=data["Address Line 2"],
+            address_line_3=data["Address Line 3"],
+            city=data["City"],
+            state=data["State"],
+            zip_code=data["Zip Code"],
+            country=data["Country"],
+            phone_number=data["Phone Number"],
+        )
 
 
 @dataclass
 class AirlineRecord:
-    TYPE: ClassVar[str] = "airline"
+    """Dataclass representing an Airline record."""
+
+    TYPE: ClassVar[str] = "Airline"
 
     id: int
     company_name: str
@@ -43,17 +71,27 @@ class AirlineRecord:
         self.type = self.TYPE
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        """Return the record as a dictionary using the canonical schema field names."""
+        return {
+            "ID": self.id,
+            "Type": self.type,
+            "Company Name": self.company_name,
+        }
 
     @classmethod
     def from_dict(cls, data: dict) -> "AirlineRecord":
-        d = {k: v for k, v in data.items() if k != "type"}
-        return cls(**d)
+        """Construct an AirlineRecord from a canonical schema dictionary."""
+        return cls(
+            id=data["ID"],
+            company_name=data["Company Name"],
+        )
 
 
 @dataclass
 class FlightRecord:
-    TYPE: ClassVar[str] = "flight"
+    """Dataclass representing a Flight record."""
+
+    TYPE: ClassVar[str] = "Flight"
 
     client_id: int
     airline_id: int
@@ -68,11 +106,23 @@ class FlightRecord:
             self.date = datetime.fromisoformat(self.date)
 
     def to_dict(self) -> dict:
-        d = asdict(self)
-        d["date"] = self.date.isoformat()
-        return d
+        """Return the record as a dictionary using the canonical schema field names."""
+        return {
+            "Type": self.type,
+            "Client_ID": self.client_id,
+            "Airline_ID": self.airline_id,
+            "Date": self.date.isoformat(),
+            "Start City": self.start_city,
+            "End City": self.end_city,
+        }
 
     @classmethod
     def from_dict(cls, data: dict) -> "FlightRecord":
-        d = {k: v for k, v in data.items() if k != "type"}
-        return cls(**d)
+        """Construct a FlightRecord from a canonical schema dictionary."""
+        return cls(
+            client_id=data["Client_ID"],
+            airline_id=data["Airline_ID"],
+            date=data["Date"],
+            start_city=data["Start City"],
+            end_city=data["End City"],
+        )

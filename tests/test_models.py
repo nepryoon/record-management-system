@@ -15,18 +15,27 @@ def make_client(**kwargs):
 class TestClientRecord:
     def test_type_is_auto_set(self):
         c = make_client()
-        assert c.type == "client"
+        assert c.type == "Client"
 
-    def test_to_dict_contains_all_keys(self):
+    def test_to_dict_contains_canonical_keys(self):
+        """to_dict() must return all brief-mandated field names."""
         d = make_client().to_dict()
-        for key in ("id", "name", "type", "city", "country"):
-            assert key in d
+        expected_keys = {
+            "ID", "Type", "Name",
+            "Address Line 1", "Address Line 2", "Address Line 3",
+            "City", "State", "Zip Code", "Country", "Phone Number",
+        }
+        assert expected_keys == set(d.keys())
+
+    def test_to_dict_type_value_is_capitalised(self):
+        d = make_client().to_dict()
+        assert d["Type"] == "Client"
 
     def test_from_dict_round_trip(self):
         original = make_client()
         restored = ClientRecord.from_dict(original.to_dict())
         assert restored.name == original.name
-        assert restored.type == "client"
+        assert restored.type == "Client"
 
     def test_missing_required_field_raises(self):
         with pytest.raises(TypeError):
@@ -36,7 +45,16 @@ class TestClientRecord:
 class TestAirlineRecord:
     def test_type_is_auto_set(self):
         a = AirlineRecord(id=10, company_name="BritAir")
-        assert a.type == "airline"
+        assert a.type == "Airline"
+
+    def test_to_dict_contains_canonical_keys(self):
+        """to_dict() must return all brief-mandated field names."""
+        d = AirlineRecord(id=10, company_name="BritAir").to_dict()
+        assert set(d.keys()) == {"ID", "Type", "Company Name"}
+
+    def test_to_dict_type_value_is_capitalised(self):
+        d = AirlineRecord(id=10, company_name="BritAir").to_dict()
+        assert d["Type"] == "Airline"
 
     def test_round_trip(self):
         a = AirlineRecord(id=10, company_name="BritAir")
@@ -51,11 +69,20 @@ class TestFlightRecord:
                             start_city="London", end_city="Rome")
 
     def test_type_is_auto_set(self):
-        assert self._make().type == "flight"
+        assert self._make().type == "Flight"
+
+    def test_to_dict_contains_canonical_keys(self):
+        """to_dict() must return all brief-mandated field names."""
+        d = self._make().to_dict()
+        assert set(d.keys()) == {"Type", "Client_ID", "Airline_ID", "Date", "Start City", "End City"}
+
+    def test_to_dict_type_value_is_capitalised(self):
+        d = self._make().to_dict()
+        assert d["Type"] == "Flight"
 
     def test_date_serialised_to_string(self):
         d = self._make().to_dict()
-        assert isinstance(d["date"], str)
+        assert isinstance(d["Date"], str)
 
     def test_from_dict_restores_datetime(self):
         f = self._make()
