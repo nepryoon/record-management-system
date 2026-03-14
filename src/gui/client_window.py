@@ -4,37 +4,83 @@ import re
 import sys
 import os
 
-# Connect storage file
+# Adjust the Python path to allow imports from the parent directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from storage import load_records, save_records
 
 
 class ClientWindow(tk.Toplevel):
     """
-    Client Management Window
-    Provides Create, Search, Update, Delete functionality for client records.
+    Client Record Management Window.
+
+    Provides a full CRUD interface (Create, Search, Update, Delete)
+    for client records stored in the shared JSONL data file.
     """
+
     def __init__(self, master):
         super().__init__(master)
 
         # ----------------------------------------------------------
-        # Window configuration
+        # Window title and background colour
+        # ----------------------------------------------------------
         self.title("Client Record System")
-        WIN_W, WIN_H = 1300, 820
-        self.resizable(True, True)
-        self.minsize(WIN_W, WIN_H)
-        self.update_idletasks()
-        ptr_x  = self.winfo_pointerx()
-        full_w = self.winfo_screenwidth()
-        mon_w  = full_w // 2 if self.winfo_screenwidth() != self.winfo_vrootwidth() else full_w
-        mon_h  = self.winfo_screenheight()
-        mon_x  = mon_w if ptr_x >= mon_w else 0
-        x = mon_x + (mon_w - WIN_W) // 2
-        y = (mon_h - WIN_H) // 2
-        self.geometry(f"{WIN_W}x{WIN_H}+{x}+{y}")
         self.configure(bg="#f4f6f7")
 
-        # Focus behaviour
+        # ----------------------------------------------------------
+        # HiDPI / scaling-aware window sizing
+        #
+        # On HiDPI displays (e.g. Wayland fractional scaling) tkinter
+        # reports a scaling factor greater than the standard baseline of
+        # 96 DPI / 72 pt = 1.333. The compositor then scales the window
+        # back down, making it appear smaller than intended.
+        #
+        # To compensate, the target dimensions are multiplied by the
+        # ratio between the actual scaling and the baseline, so that
+        # the compositor scales the window back to the intended visual size.
+        #
+        # The window is then centred on whichever monitor the mouse
+        # cursor currently resides on, calculated from the pointer
+        # x-coordinate and the estimated per-monitor width.
+        # ----------------------------------------------------------
+        BASE_SCALING = 96.0 / 72.0  # Standard tkinter baseline scaling factor
+        actual_scaling = float(self.tk.call('tk', 'scaling'))  # Current system scaling
+        ratio = actual_scaling / BASE_SCALING  # HiDPI multiplier (1.0 on normal displays)
+
+        # Total virtual desktop dimensions (spanning all connected monitors)
+        phys_w = self.winfo_screenwidth()
+        phys_h = self.winfo_screenheight()
+
+        # Estimate the number of monitors from the virtual desktop aspect ratio
+        # (e.g. 6912 / 2160 ≈ 3 monitors arranged side by side)
+        monitors = max(1, round(phys_w / phys_h))
+        mon_w = phys_w // monitors  # Approximate width of a single monitor in pixels
+
+        # Target visual size in device-independent pixels
+        TARGET_W, TARGET_H = 1300, 820
+
+        # Scale up to compensate for HiDPI; clamp to monitor bounds
+        WIN_W = min(int(TARGET_W * ratio), mon_w - 40)
+        WIN_H = min(int(TARGET_H * ratio), phys_h - 80)
+
+        self.resizable(True, True)
+        self.minsize(WIN_W, WIN_H)
+
+        # Force tkinter to calculate widget sizes before reading pointer position
+        self.update_idletasks()
+
+        # Centre on the monitor where the mouse cursor currently resides
+        ptr_x = self.winfo_pointerx()
+        mon_index = min(ptr_x // mon_w, monitors - 1)  # Zero-based monitor index
+        mon_origin_x = mon_index * mon_w                # Left edge of the active monitor
+        x = mon_origin_x + (mon_w - WIN_W) // 2        # Horizontal centre
+        y = (phys_h - WIN_H) // 2                      # Vertical centre
+        self.geometry(f"{WIN_W}x{WIN_H}+{x}+{y}")
+
+        # ----------------------------------------------------------
+        # Focus and modality
+        # transient() keeps this window above the master at all times;
+        # grab_set() makes it modal (blocks interaction with the master).
+        # ----------------------------------------------------------
         self.transient(master)
         self.lift()
         self.focus_force()
@@ -42,65 +88,78 @@ class ClientWindow(tk.Toplevel):
         self.focus()
 
         # ----------------------------------------------------------
-        # Load client records 
-        self.records = load_records() or []  
-        print("DEBUG: Loaded client records:", self.records) 
+        # Load client records from the shared JSONL storage file
+        # ----------------------------------------------------------
+        self.records = load_records() or []
+        print("DEBUG: Loaded client records:", self.records)
 
         # ----------------------------------------------------------
-        # Required fields for validation
+        # Fields that must not be empty when creating or updating a record
+        # ----------------------------------------------------------
         self.required_fields = ["ID", "Name", "Phone Number"]
 
         # ----------------------------------------------------------
-        # Style Setup
+        # ttk Style configuration
+        # Applied to the Treeview table and its scrollbars
+        # ----------------------------------------------------------
         self.style = ttk.Style()
         self.style.theme_use("clam")
         self.style.map("Treeview", background=[("selected", "#3498db")])
         self.style.configure("Treeview", font=("Arial", 12))
         self.style.configure("Treeview.Heading", font=("Arial", 13, "bold"))
-        self.style.configure("Vertical.TScrollbar",
-                             gripcount=0,
-                             background="#5d6d7e",
-                             troughcolor="#ecf0f1",
-                             bordercolor="#ecf0f1",
-                             arrowcolor="white",
-                             width=22)
-        self.style.configure("Horizontal.TScrollbar",
-                             gripcount=0,
-                             background="#5d6d7e",
-                             troughcolor="#ecf0f1",
-                             bordercolor="#ecf0f1",
-                             arrowcolor="white",
-                             width=18)
+        self.style.configure(
+            "Vertical.TScrollbar",
+            gripcount=0,
+            background="#5d6d7e",
+            troughcolor="#ecf0f1",
+            bordercolor="#ecf0f1",
+            arrowcolor="white",
+            width=22   # Wider than the default for easier grabbing
+        )
+        self.style.configure(
+            "Horizontal.TScrollbar",
+            gripcount=0,
+            background="#5d6d7e",
+            troughcolor="#ecf0f1",
+            bordercolor="#ecf0f1",
+            arrowcolor="white",
+            width=18
+        )
 
         # ----------------------------------------------------------
-        # Load Client Icon
+        # Load the client icon for the header.
+        # Falls back gracefully if the asset file is not found.
+        # ----------------------------------------------------------
         assets = os.path.join(os.path.dirname(__file__), "assets")
         try:
             self.client_icon = tk.PhotoImage(
                 file=os.path.join(assets, "client.png")
-            ).subsample(3,3)  # reduce icon size
+            ).subsample(3, 3)  # Reduce icon to one-third of its original size
         except Exception:
             self.client_icon = None
 
         # ----------------------------------------------------------
-        # Build the GUI
+        # Build all GUI widgets and populate the Treeview with existing records
+        # ----------------------------------------------------------
         self.create_widgets()
         self.populate_treeview()
 
         # ----------------------------------------------------------
         # Event bindings
-        
-        self.protocol("WM_DELETE_WINDOW", self.on_close) # Save records when window closes
-        self.bind("<Return>", lambda event: self.create_client()) # Press enter to create a client
-        self.entries["ID"].focus_set() # Set focus to ID entry initially
+        # ----------------------------------------------------------
+        self.protocol("WM_DELETE_WINDOW", self.on_close)              # Save on close
+        self.bind("<Return>", lambda event: self.create_client())      # Enter key creates a record
+        self.entries["ID"].focus_set()                                 # Initial focus on the ID field
 
     # ----------------------------------------------------------
-    # GUI Components
-    def create_widgets(self): 
-        """Create and place all GUI widgets"""
+    # GUI construction
+    # ----------------------------------------------------------
 
-        # Header
-        header = tk.Frame(self,bg="#2c3e50", pady=15)
+    def create_widgets(self):
+        """Create and lay out all GUI widgets within the window."""
+
+        # Header bar — dark background with centred title and icon
+        header = tk.Frame(self, bg="#2c3e50", pady=15)
         header.pack(fill="x")
         tk.Label(
             header,
@@ -111,14 +170,16 @@ class ClientWindow(tk.Toplevel):
             fg="white",
             bg="#2c3e50"
         ).pack()
-     
+
         # ----------------------------------------------------------
-        # Main container frame
+        # Main container — holds the form, buttons, and table
+        # ----------------------------------------------------------
         main = tk.Frame(self, bg="#f4f6f7", padx=20, pady=10)
         main.pack(fill="both", expand=True)
 
         # ----------------------------------------------------------
-        # Form Frame for client input
+        # Input form — labelled frame containing all record fields
+        # ----------------------------------------------------------
         form = tk.LabelFrame(
             main,
             text="Client Information",
@@ -129,7 +190,7 @@ class ClientWindow(tk.Toplevel):
         )
         form.pack(fill="x", pady=10)
 
-        # List of fields to display in the form
+        # Field names in display order
         self.fields = [
             "ID",
             "Name",
@@ -144,11 +205,11 @@ class ClientWindow(tk.Toplevel):
         ]
         self.entries = {}
 
-        # Form Grid
+        # Lay out fields in a two-column grid
         for i, field in enumerate(self.fields):
             row = i // 2
             col = (i % 2) * 2
-            # Add '*' for required fields
+            # Append an asterisk to required field labels
             label_text = field + " *" if field in self.required_fields else field
             tk.Label(
                 form,
@@ -158,14 +219,14 @@ class ClientWindow(tk.Toplevel):
             ).grid(row=row, column=col, sticky="w", pady=10)
 
             entry = tk.Entry(form, font=("Arial", 12), bd=2, relief="solid")
-            entry.grid(row=row, column=col+1, pady=10, padx=10, sticky="ew")
+            entry.grid(row=row, column=col + 1, pady=10, padx=10, sticky="ew")
             self.entries[field] = entry
 
-        # Make form columns expand properly
+        # Allow both entry columns to expand when the window is resized
         form.columnconfigure(1, weight=1)
         form.columnconfigure(3, weight=1)
 
-        # Required fields note
+        # Required fields note below the form
         tk.Label(
             main,
             text="* Required fields",
@@ -175,23 +236,25 @@ class ClientWindow(tk.Toplevel):
         ).pack(anchor="w", padx=5)
 
         # ----------------------------------------------------------
-        # Buttons frame
+        # CRUD action buttons
+        # ----------------------------------------------------------
         btn_frame = tk.Frame(main, bg="#f4f6f7")
         btn_frame.pack(fill="x", pady=12)
 
-        # Define buttons with colours and linked commands
         buttons = [
             ("Create", "#27ae60", self.create_client),
             ("Update", "#2980b9", self.update_client),
             ("Delete", "#c0392b", self.delete_client),
             ("Search", "#8e44ad", self.search_client),
-            ("Clear", "#7f8c8d", self.clear_form)
+            ("Clear",  "#7f8c8d", self.clear_form),
         ]
-        
-        # Button hover effect
+
         def on_enter(e):
+            """Darken button on mouse-over."""
             e.widget['bg'] = '#34495e'
+
         def on_leave(e, color):
+            """Restore original button colour when cursor leaves."""
             e.widget['bg'] = color
 
         for i, (text, color, cmd) in enumerate(buttons):
@@ -210,7 +273,8 @@ class ClientWindow(tk.Toplevel):
             btn_frame.columnconfigure(i, weight=1)
 
         # ----------------------------------------------------------
-        # Treeview Table
+        # Treeview record table with vertical and horizontal scrollbars
+        # ----------------------------------------------------------
         table_frame = tk.Frame(main, bg="white")
         table_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
@@ -220,42 +284,45 @@ class ClientWindow(tk.Toplevel):
         )
         col_widths = {
             "ID": 50, "NAME": 140, "ADDRESS 1": 120, "ADDRESS 2": 120,
-            "ADDRESS 3": 120, "CITY": 100, "STATE": 80, "ZIP CODE": 80,
-            "COUNTRY": 100, "PHONE NUMBER": 120
+            "ADDRESS 3": 120, "CITY": 100, "STATE": 80,
+            "ZIP CODE": 80, "COUNTRY": 100, "PHONE NUMBER": 120
         }
-        # Treeview columns
+
         self.tree = ttk.Treeview(
             table_frame,
             columns=columns,
-            show="headings",
+            show="headings",  # Hide the default empty first column
             height=12
         )
-        # colors rows differently
-        self.tree.tag_configure('oddrow', background='white')
+
+        # Alternating row colours for readability
+        self.tree.tag_configure('oddrow',  background='white')
         self.tree.tag_configure('evenrow', background='#f2f2f2')
 
         for col in columns:
             self.tree.heading(col, text=col)
-            stretch = col == "NAME"
-            self.tree.column(col, anchor="center", width=col_widths[col], minwidth=col_widths[col], stretch=stretch)
+            stretch = col == "NAME"  # Only the Name column stretches
+            self.tree.column(
+                col,
+                anchor="center",
+                width=col_widths[col],
+                minwidth=col_widths[col],
+                stretch=stretch
+            )
 
-        # Horizontal scrollbar
+        # Horizontal scrollbar — packed before the tree so it appears below
         xscroll = ttk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
         self.tree.configure(xscrollcommand=xscroll.set)
         xscroll.pack(side="bottom", fill="x")
 
-        # Vertical scrollbar for Treeview
-        scroll = ttk.Scrollbar(
-            table_frame,
-            orient="vertical",
-            command=self.tree.yview
-        )
-        self.tree.configure(yscrollcommand=scroll.set)
-        scroll.pack(side="right", fill="y")
+        # Vertical scrollbar — packed before the tree so it appears to the right
+        yscroll = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=yscroll.set)
+        yscroll.pack(side="right", fill="y")
+
         self.tree.pack(fill="both", expand=True)
 
-        # ----------------------------------------------------------
-        # Empty record message
+        # Placeholder label shown when no records exist
         self.empty_label = tk.Label(
             table_frame,
             text="No clients registered yet",
@@ -265,11 +332,12 @@ class ClientWindow(tk.Toplevel):
         )
         self.empty_label.place(relx=0.5, rely=0.5, anchor="center")
 
-         # Bind table selection
+        # Populate the form when the user clicks a row in the table
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
 
         # ----------------------------------------------------------
-        # Total clients counter
+        # Total record counter displayed below the table
+        # ----------------------------------------------------------
         self.counter = tk.Label(
             main,
             text="",
@@ -279,7 +347,8 @@ class ClientWindow(tk.Toplevel):
         self.counter.pack(anchor="e", padx=5)
 
         # ----------------------------------------------------------
-        # Status bar at bottom
+        # Status bar at the bottom of the window
+        # ----------------------------------------------------------
         self.status = tk.Label(
             self,
             text="System Ready",
@@ -290,15 +359,18 @@ class ClientWindow(tk.Toplevel):
             font=("Arial", 12)
         )
         self.status.pack(fill="x", side="bottom")
-    
+
     # ----------------------------------------------------------
-    # Populate Treeview
+    # Treeview population
+    # ----------------------------------------------------------
+
     def populate_treeview(self):
         """
-        Populate the Treeview table with client records.
-        Implements Empty State and updates total counter.
+        Clear and repopulate the Treeview with all client records.
+        Shows an empty-state label when no records are present and
+        updates the total client counter.
         """
-         # Clear the table first
+        # Remove all existing rows
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -307,26 +379,36 @@ class ClientWindow(tk.Toplevel):
             if r.get("Type") == "Client":
                 tag = "evenrow" if idx % 2 == 0 else "oddrow"
                 self.tree.insert("", "end", values=(
-                    r.get("ID"), r.get("Name"),
-                    r.get("Address Line 1"), r.get("Address Line 2"), r.get("Address Line 3"),
-                    r.get("City"), r.get("State"), r.get("Zip Code"),
-                    r.get("Country"), r.get("Phone Number")
+                    r.get("ID"),
+                    r.get("Name"),
+                    r.get("Address Line 1"),
+                    r.get("Address Line 2"),
+                    r.get("Address Line 3"),
+                    r.get("City"),
+                    r.get("State"),
+                    r.get("Zip Code"),
+                    r.get("Country"),
+                    r.get("Phone Number")
                 ), tags=(tag,))
                 count += 1
 
-        # Show or hide the empty label
+        # Toggle empty-state label visibility
         if count == 0:
-            self.empty_label.lift()   # make it visible
+            self.empty_label.lift()   # Bring the label to the front
         else:
-            self.empty_label.lower()  # hide it
+            self.empty_label.lower()  # Send the label behind the Treeview
 
-        # Update total clients counter
         self.counter.config(text=f"Total Clients: {count}")
 
     # ----------------------------------------------------------
-    # Basic functions
+    # Input helpers
+    # ----------------------------------------------------------
+
     def get_client_id(self):
-        """Return client ID as integer, with validation"""
+        """
+        Read and return the ID field as an integer.
+        Displays a warning dialogue and returns None if the value is not numeric.
+        """
         try:
             return int(self.entries["ID"].get())
         except ValueError:
@@ -336,7 +418,7 @@ class ClientWindow(tk.Toplevel):
             return None
 
     def clear_form(self):
-        """Clear the entry fields"""
+        """Clear all entry fields and remove any validation highlights."""
         for entry in self.entries.values():
             entry.delete(0, tk.END)
             entry.config(highlightthickness=0)
@@ -346,73 +428,83 @@ class ClientWindow(tk.Toplevel):
         self.status.config(text="✔ Form cleared. Ready")
 
     def get_entry_values(self):
+        """Return a dictionary of all field values, stripped of leading/trailing whitespace."""
         return {f: self.entries[f].get().strip() for f in self.fields}
 
     def validate_field(self, field, value):
-        """Validate input for each field based on type rules. Optional fields can be empty."""
+        """
+        Validate a single field value according to its expected data type.
+        Optional fields that are empty are considered valid.
+        """
         value = value.strip()
-        # If field is empty, skip validation
         if not value:
-            return True
+            return True  # Empty optional fields are acceptable
         if field in ["ID", "Zip Code", "Phone Number"]:
-            return value.isdigit()  # must be numbers
+            return value.isdigit()  # Numeric fields must contain digits only
         elif field in ["Name", "City", "State", "Country"]:
-            return bool(re.match(r"^[A-Za-z\s'-]+$", value))  # Letters + spaces only
-        return True  # fallback for any other field
+            return bool(re.match(r"^[A-Za-z\s'-]+$", value))  # Letters and spaces only
+        return True  # All other fields accept any non-empty string
 
     def validate_entries(self, values):
         """
         Validate all entry values.
-        Returns (is_valid, invalid_field_name) tuple.
+
+        Returns a tuple of (is_valid: bool, invalid_field: str | None).
+        Checks required fields first, then applies per-field type validation.
         """
-        # Check required fields
         for field in self.required_fields:
             if not values[field]:
                 return False, field
-        # Validate all fields
         for field, value in values.items():
             if not self.validate_field(field, value):
                 return False, field
         return True, None
 
     # ----------------------------------------------------------
-    # Create, Search, Update, Delete
+    # CRUD operations
+    # ----------------------------------------------------------
+
     def create_client(self):
-        """Create a new client record after validating required fields"""
+        """
+        Validate the form and create a new client record.
+        Highlights any missing required fields in red before saving.
+        """
+        # Highlight missing required fields
         missing = []
         for field in self.required_fields:
             if not self.entries[field].get().strip():
                 missing.append(field)
-                # highlight required fields if missing
                 self.entries[field].config(highlightbackground="red", highlightthickness=1)
             else:
                 self.entries[field].config(highlightthickness=0)
 
-        if missing: 
+        if missing:
             self.lift()
             self.focus_force()
             messagebox.showwarning("Validation", "Please fill all required fields.", parent=self)
             self.status.config(text="Validation failed: required fields missing.")
             return
-        
-        # Validate entries
+
         values = self.get_entry_values()
         is_valid, invalid_field = self.validate_entries(values)
         if not is_valid:
-                self.lift()
-                self.focus_force()
-                messagebox.showwarning("Validation Error", f"Invalid or missing value for '{invalid_field}'.", parent=self)
-                self.entries[invalid_field].focus()
-                self.status.config(text=f"Validation failed: '{invalid_field}' invalid/missing.")
-                return
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning(
+                "Validation Error",
+                f"Invalid or missing value for '{invalid_field}'.",
+                parent=self
+            )
+            self.entries[invalid_field].focus()
+            self.status.config(text=f"Validation failed: '{invalid_field}' invalid/missing.")
+            return
 
-        # Check if ID is valid
         cid = self.get_client_id()
         if cid is None:
             self.status.config(text="Invalid ID. Client not created.")
             return
 
-        # Check if ID already exists
+        # Reject duplicate IDs
         if any(r.get("Type") == "Client" and str(r.get("ID")) == str(cid) for r in self.records):
             self.lift()
             self.focus_force()
@@ -420,8 +512,7 @@ class ClientWindow(tk.Toplevel):
             self.status.config(text="Duplicate ID. Client not created.")
             return
 
-        # Create and save new record
-        values["ID"] = cid
+        values["ID"]   = cid
         values["Type"] = "Client"
         self.records.append(values)
         save_records(self.records)
@@ -432,18 +523,23 @@ class ClientWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Success", "✔ Client record added successfully.", parent=self)
 
-    # -----------------------------
     def search_client(self):
-        """Search client by ID and optionally verify other fields"""
+        """
+        Search for a client by ID.
+        If additional fields are filled in, verifies that they match the stored record.
+        Populates the form and highlights the matching row in the table on success.
+        """
         cid = self.get_client_id()
         if cid is None:
             return
 
         values = self.get_entry_values()
 
-        # Find record with this ID
         record = next(
-            (r for r in self.records if r.get("Type") == "Client" and str(r.get("ID")) == str(cid)), None)
+            (r for r in self.records
+             if r.get("Type") == "Client" and str(r.get("ID")) == str(cid)),
+            None
+        )
         if not record:
             self.lift()
             self.focus_force()
@@ -451,16 +547,12 @@ class ClientWindow(tk.Toplevel):
             self.status.config(text="✖ Client not found.")
             return
 
-        # If other fields are filled, check if they match
-        mismatch = False
-        for field, value in values.items():
-            if field == "ID":
-                continue
-            if value:  # only check fields the user entered
-                if str(record.get(field, "")).lower() != value.lower():
-                    mismatch = True
-                    break
-
+        # Check that any additionally entered fields match the stored record
+        mismatch = any(
+            value and str(record.get(field, "")).lower() != value.lower()
+            for field, value in values.items()
+            if field != "ID"
+        )
         if mismatch:
             self.lift()
             self.focus_force()
@@ -468,19 +560,18 @@ class ClientWindow(tk.Toplevel):
                 "Search",
                 "Client ID exists but some entered information does not match.",
                 parent=self
-           )
+            )
             self.status.config(text="✖ ID found but information mismatch.")
             return
 
-        # If everything matches OR ID only search → show record
+        # Populate the form with the found record
         for field in self.fields:
             self.entries[field].delete(0, tk.END)
             self.entries[field].insert(0, record.get(field, ""))
 
-        # Highlight in table
+        # Highlight the matching row in the Treeview
         for item in self.tree.get_children():
-            values = self.tree.item(item, "values")
-            if str(values[0]) == str(cid):
+            if str(self.tree.item(item, "values")[0]) == str(cid):
                 self.tree.selection_set(item)
                 self.tree.focus(item)
                 self.tree.see(item)
@@ -491,45 +582,48 @@ class ClientWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Search Result", f"✔ Client '{record['Name']}' found.", parent=self)
 
-    # -----------------------------
     def update_client(self):
-        """Update an existing client record"""
+        """
+        Update an existing client record identified by the ID field.
+        Cascades any ID change to associated flight records.
+        """
         cid = self.get_client_id()
         if cid is None:
             return
-        
-        # Find record
+
         record = next(
-        (r for r in self.records if r.get("Type") == "Client" and str(r.get("ID")) == str(cid)), None)
+            (r for r in self.records
+             if r.get("Type") == "Client" and str(r.get("ID")) == str(cid)),
+            None
+        )
         if not record:
             self.lift()
             self.focus_force()
             messagebox.showinfo("Update", "Client not found.", parent=self)
             return
 
-        # Save old ID for cascading update
         old_id = record["ID"]
-
-        # Get values
         values = self.get_entry_values()
 
-        # Validate
         is_valid, invalid_field = self.validate_entries(values)
         if not is_valid:
             self.lift()
             self.focus_force()
-            messagebox.showwarning("Validation Error", f"Invalid or missing value for '{invalid_field}'.", parent=self)
+            messagebox.showwarning(
+                "Validation Error",
+                f"Invalid or missing value for '{invalid_field}'.",
+                parent=self
+            )
             self.entries[invalid_field].focus()
             self.status.config(text=f"Validation failed: '{invalid_field}' invalid/missing.")
             return
 
-        # Update client record
         for field in self.fields:
             record[field] = values[field]
 
         new_id = record["ID"]
 
-        # Cascading update for flights
+        # Cascade ID change to any linked flight records
         if old_id != new_id:
             for r in self.records:
                 if r.get("Type") == "Flight" and r.get("Client_ID") == old_id:
@@ -543,66 +637,68 @@ class ClientWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Success", "✔ Client record updated successfully.", parent=self)
 
-    # -----------------------------
     def delete_client(self):
-        """Delete a client record after confirmation"""
+        """
+        Delete the selected client record and all associated flight records
+        after asking the user for confirmation.
+        """
         selected = self.tree.selection()
         if not selected:
             self.lift()
             self.focus_force()
-            messagebox.showwarning("Delete", "Select a client first", parent=self)
+            messagebox.showwarning("Delete", "Select a client first.", parent=self)
             return
 
-        item = selected[0]
-        values = self.tree.item(item, "values")
-        client_id = str(values[0]) # Treat as string to match JSONL
+        client_id = str(self.tree.item(selected[0], "values")[0])
 
         self.lift()
         self.focus_force()
-        confirm = messagebox.askyesno(
+        if not messagebox.askyesno(
             "Confirm Delete",
             f"Delete Client {client_id} and ALL their flights?",
             parent=self
-        )
-        if not confirm:
+        ):
             return
 
-        # Remove client and related flights
+        # Remove the client and all of their associated flight records
         self.records = [
             r for r in self.records
-            if not ((r.get("Type") == "Client" and str(r.get("ID")) == client_id) or
-                    (r.get("Type") == "Flight" and str(r.get("Client_ID")) == client_id))
+            if not (
+                (r.get("Type") == "Client"  and str(r.get("ID"))        == client_id) or
+                (r.get("Type") == "Flight"  and str(r.get("Client_ID")) == client_id)
+            )
         ]
         save_records(self.records)
         self.populate_treeview()
-        self.tree.selection_remove(self.tree.selection())  # clear selection
+        self.tree.selection_remove(self.tree.selection())
         self.status.config(text=f"✔ Client {client_id} and related flights deleted.")
         self.lift()
         self.focus_force()
         messagebox.showinfo("Deleted", "Client and associated flights removed.", parent=self)
 
     # ----------------------------------------------------------
-    # Treeview Event
+    # Treeview selection event
+    # ----------------------------------------------------------
+
     def on_tree_select(self, event):
-        """Populate form when a client is selected in the Treeview"""
+        """Populate the form fields when the user selects a row in the Treeview."""
         selected = self.tree.selection()
         if not selected:
             return
-        values = self.tree.item(selected[0], "values")
-        cid = values[0]
+        cid = self.tree.item(selected[0], "values")[0]
         for r in self.records:
-             if r.get("Type") == "Client" and str(r.get("ID")) == str(cid):
+            if r.get("Type") == "Client" and str(r.get("ID")) == str(cid):
                 for field in self.fields:
                     self.entries[field].delete(0, tk.END)
                     self.entries[field].insert(0, r.get(field, ""))
                 self.status.config(text="Client loaded from table.")
                 break
-    
+
     # ----------------------------------------------------------
-    # Close event
+    # Window close event
+    # ----------------------------------------------------------
+
     def on_close(self):
-        """Save all records and update main window status before closing"""
+        """Persist all records to the JSONL file before destroying the window."""
         save_records(self.records)
         self.destroy()
-
-    
