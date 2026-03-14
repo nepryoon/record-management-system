@@ -14,9 +14,10 @@ from .flight_window import FlightWindow
 def open_main_window():
     """Initializes the primary dashboard for the Travel Management System."""
     root = tk.Tk()
+    root.tk.call('tk', 'scaling', 1.0)
     root.title("Travel Record Management System")
     root.geometry("1000x850") # Fixed window size 
-    root.resizable(False, False) # Prevent resizing to maintain layout
+    root.resizable(True, True) # Allow resizing for HiDPI display compatibility
     root.configure(bg="#f4f6f7") 
 
     # ----------------------------------------------------------
@@ -28,10 +29,12 @@ def open_main_window():
     tk.Label(
         header_frame,
         text="TRAVEL RECORD MANAGEMENT SYSTEM",
-        font=("Arial", 28, "bold"),
+        font=("Arial", 22, "bold"),
         fg="white",
-        bg="#2c3e50"
-    ).pack(pady=(20, 5))
+        bg="#2c3e50",
+        wraplength=800,
+        justify="center"
+    ).pack(pady=(20, 5), fill="x", expand=True)
 
     # Dashboard Subtitle
     tk.Label(
