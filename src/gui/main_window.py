@@ -9,6 +9,7 @@ record-management modules are launched.
 import os
 import tkinter as tk
 from tkinter import messagebox
+from tkinter.font import Font
 
 from .client_window import ClientWindow
 from .airline_window import AirlineWindow
@@ -32,76 +33,27 @@ def open_main_window() -> None:
     root.configure(bg="#f4f6f7")  # Light grey background for the main canvas
 
     # ----------------------------------------------------------
-    # HiDPI / scaling-aware window sizing
-    #
-    # tkinter reports dimensions in logical pixels, but on HiDPI displays
-    # (e.g. Retina, Wayland fractional scaling) the system applies a scaling
-    # factor that makes the window appear smaller than intended.
-    #
-    # Strategy:
-    #   1. Read the current tkinter scaling value.
-    #   2. Divide by the standard baseline (96 DPI / 72 pt = 1.333) to obtain
-    #      the effective HiDPI ratio (e.g. 2.667 / 1.333 ≈ 2.0 on a 2x display).
-    #   3. Multiply the target pixel dimensions by that ratio so that the
-    #      compositor scales the window back down to the intended visual size.
-    #   4. Estimate the number of connected monitors by dividing the total
-    #      virtual screen width by the screen height (assumes landscape monitors
-    #      of roughly equal size).
-    #   5. Centre the window on whichever monitor the mouse cursor resides on.
+    # Physical screen metrics — used for window centring only.
+    # No HiDPI scaling is applied to the window size; dimensions
+    # are derived from content and a physical millimetre unit instead.
     # ----------------------------------------------------------
-
-    BASE_SCALING = 96.0 / 72.0  # Standard tkinter baseline scaling factor
-    # PEP 8 fix: use double quotes for string literals consistently
-    actual_scaling = float(root.tk.call("tk", "scaling"))  # Current system scaling
-    ratio = actual_scaling / BASE_SCALING  # HiDPI multiplier (1.0 on normal displays)
-
-    # Retrieve the total virtual desktop dimensions (spanning all monitors)
     phys_w = root.winfo_screenwidth()
     phys_h = root.winfo_screenheight()
 
-    # Estimate the number of monitors based on the aspect ratio of the
-    # virtual desktop (e.g. 6912 / 2160 ≈ 3 monitors side by side)
+    # Estimate the number of monitors from the virtual desktop aspect ratio
+    # (e.g. 5760 x 1080 ≈ 5760/1080 ≈ 5, clamped to at least 1)
     monitors = max(1, round(phys_w / phys_h))
     mon_w = phys_w // monitors  # Approximate width of a single monitor in pixels
 
-    # Target visual size in device-independent pixels
-    TARGET_W, TARGET_H = 600, 600
-
-    # Scale up the target dimensions to compensate for HiDPI compositor scaling.
-    # Clamp to the monitor bounds to avoid the window exceeding screen edges.
-    WIN_W = min(int(TARGET_W * ratio), mon_w - 40)
-    WIN_H = min(int(TARGET_H * ratio), phys_h - 80)
-
-    root.resizable(True, True)       # Allow the user to resize the window freely
-    root.minsize(WIN_W, WIN_H)       # Prevent the window from becoming too small
-
-    # Force tkinter to calculate widget sizes before reading pointer position
-    root.update_idletasks()
-
-    # Determine which monitor the mouse cursor is currently on and centre
-    # the window on that monitor rather than on the full virtual desktop
-    ptr_x = root.winfo_pointerx()
-    mon_index = min(ptr_x // mon_w, monitors - 1)  # Zero-based monitor index
-    mon_origin_x = mon_index * mon_w               # Left edge of the active monitor
-    x = mon_origin_x + (mon_w - WIN_W) // 2        # Horizontal centre
-    y = (phys_h - WIN_H) // 2                      # Vertical centre
-    root.geometry(f"{WIN_W}x{WIN_H}+{x}+{y}")
-
     # ----------------------------------------------------------
-    # Maximum window size cap
-    #
-    # Without a maxsize constraint the three module buttons expand via
-    # sticky="nsew" to fill the entire screen when the user maximises
-    # the window, making icons appear lost in a vast blue field and
-    # erasing the white space that visually separates the modules.
-    #
-    # The cap is derived proportionally from the HiDPI ratio so that it
-    # scales correctly across different screen densities, and is clamped
-    # to the monitor bounds to avoid exceeding the physical screen edges.
+    # Universal spacing unit: 5 mm converted to pixels.
+    # winfo_fpixels('1m') returns the number of screen pixels in
+    # 1 mm for this display, accounting for display DPI automatically.
+    # All gaps — between buttons, between buttons and window borders,
+    # and inside buttons on either side of their labels — use this
+    # single value so spacing is perceptually identical on every screen.
     # ----------------------------------------------------------
-    MAX_W = min(int(960 * ratio), mon_w - 40)
-    MAX_H = min(int(900 * ratio), phys_h - 80)
-    root.maxsize(MAX_W, MAX_H)
+    SP = round(root.winfo_fpixels('1m') * 5)
 
     # ----------------------------------------------------------
     # Header frame
@@ -116,7 +68,7 @@ def open_main_window() -> None:
         font=("Arial", 16, "bold"),
         fg="white",
         bg="#2c3e50",
-        wraplength=560,   # Wrap the title if the window is narrower than 560px
+        wraplength=0,   # wraplength=0 disables wrapping; window width is fixed to content size
         justify="center"
     ).pack(pady=(12, 4), fill="x", expand=True)
 
@@ -183,15 +135,18 @@ def open_main_window() -> None:
     # whilst Flights spans the full width on the second row.
     # ----------------------------------------------------------
     actions_frame = tk.Frame(root, bg="#f4f6f7")
-    actions_frame.pack(expand=True, fill="both", padx=15, pady=8)
+    # No frame-level padding — all spacing is handled precisely in the
+    # grid padx/pady below so that every gap equals exactly SP (5 mm).
+    actions_frame.pack(expand=False, fill="x")
 
     # Both columns expand equally when the window is resized
     actions_frame.grid_columnconfigure(0, weight=1)
     actions_frame.grid_columnconfigure(1, weight=1)
 
-    # Both rows expand equally to fill the available vertical space
-    actions_frame.grid_rowconfigure(0, weight=1)
-    actions_frame.grid_rowconfigure(1, weight=1)
+    # Rows use natural (content-driven) height; no expansion needed
+    # because the window size is fixed to match the content exactly.
+    actions_frame.grid_rowconfigure(0, weight=0)
+    actions_frame.grid_rowconfigure(1, weight=0)
 
     # ----------------------------------------------------------
     # Button hover effect callbacks
@@ -217,8 +172,8 @@ def open_main_window() -> None:
         "relief": "raised",
         "bd": 3,
         "compound": "top",       # Icon rendered above the button label
-        "padx": 10,
-        "pady": 10,
+        "padx": SP,   # 5 mm internal horizontal padding (text to button border)
+        "pady": SP,   # 5 mm internal vertical padding (label to button border)
         "cursor": "hand2"      # Pointer cursor to indicate interactivity
     }
 
@@ -290,7 +245,16 @@ def open_main_window() -> None:
     if client_icon:
         client_btn.config(image=client_icon)
         client_btn.image = client_icon  # Retain reference to prevent garbage collection
-    client_btn.grid(row=0, column=0, padx=10, pady=16, sticky="nsew")  # Increased pady preserves visual separation
+    # Left outer gap = SP, right inner gap = SP//2 (combined with airline's
+    # left inner gap of SP//2, total gap between the two buttons = SP = 5 mm).
+    # Top outer gap = SP, bottom inner gap = SP//2 (combined with flight's
+    # top inner gap of SP//2, total gap between the two rows = SP = 5 mm).
+    client_btn.grid(
+        row=0, column=0,
+        padx=(SP, SP // 2),
+        pady=(SP, SP // 2),
+        sticky="nsew",
+    )
     client_btn.bind("<Enter>", on_enter)
     client_btn.bind("<Leave>", on_leave)
 
@@ -304,7 +268,14 @@ def open_main_window() -> None:
     if airline_icon:
         airline_btn.config(image=airline_icon)
         airline_btn.image = airline_icon
-    airline_btn.grid(row=0, column=1, padx=10, pady=16, sticky="nsew")  # Increased pady preserves visual separation
+    # Left inner gap = SP//2 (see Clients comment above for the combined gap).
+    # Right outer gap = SP. Vertical padding mirrors the Clients button.
+    airline_btn.grid(
+        row=0, column=1,
+        padx=(SP // 2, SP),
+        pady=(SP, SP // 2),
+        sticky="nsew",
+    )
     airline_btn.bind("<Enter>", on_enter)
     airline_btn.bind("<Leave>", on_leave)
 
@@ -318,7 +289,15 @@ def open_main_window() -> None:
     if flight_icon:
         flight_btn.config(image=flight_icon)
         flight_btn.image = flight_icon
-    flight_btn.grid(row=1, column=0, columnspan=2, padx=10, pady=16, sticky="nsew")  # Increased pady preserves visual separation
+    # Horizontal outer gaps = SP on both sides.
+    # Top inner gap = SP//2 (combined with the row above = SP = 5 mm).
+    # Bottom outer gap = SP (gap to footer).
+    flight_btn.grid(
+        row=1, column=0, columnspan=2,
+        padx=SP,
+        pady=(SP // 2, SP),
+        sticky="nsew",
+    )
     flight_btn.bind("<Enter>", on_enter)
     flight_btn.bind("<Leave>", on_leave)
 
@@ -341,6 +320,31 @@ def open_main_window() -> None:
         command=confirm_exit
     )
     exit_btn.pack(side="right", padx=8, pady=6)
+
+    # ----------------------------------------------------------
+    # Fixed window size and centring
+    #
+    # All widgets have now been packed with SP-based spacing.
+    # update_idletasks() forces tkinter to calculate the geometry of every
+    # widget so that winfo_reqwidth() and winfo_reqheight() return the exact
+    # pixel dimensions needed to display all content without clipping.
+    # These become the fixed, non-resizable window dimensions.
+    # ----------------------------------------------------------
+    root.update_idletasks()
+    WIN_W = root.winfo_reqwidth()
+    WIN_H = root.winfo_reqheight()
+
+    # Lock the window to its natural content size; prevent any resizing
+    root.resizable(False, False)
+
+    # Centre the window on the monitor where the mouse pointer currently
+    # resides, using the monitor geometry estimated earlier.
+    ptr_x = root.winfo_pointerx()
+    mon_index = min(ptr_x // mon_w, monitors - 1)  # Zero-based monitor index
+    mon_origin_x = mon_index * mon_w               # Left edge of the active monitor
+    x = mon_origin_x + (mon_w - WIN_W) // 2        # Horizontal centre of that monitor
+    y = (phys_h - WIN_H) // 2                      # Vertical centre of the screen
+    root.geometry(f"{WIN_W}x{WIN_H}+{x}+{y}")
 
     # ----------------------------------------------------------
     # Start the tkinter event loop
