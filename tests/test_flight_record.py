@@ -130,3 +130,50 @@ class TestSearchFlights:
         _make_flight(records, date=DATE)
         _make_flight(records, client_id=2, date=DATE2)
         assert len(search_flights(records)) == 2
+
+
+# ── referential integrity ────────────────────────────────────────────────────
+
+
+class TestCreateFlightReferentialIntegrity:
+    """Verifies that create_flight() enforces referential integrity.
+
+    When Client or Airline records are already present in the shared
+    records list, create_flight() must reject any foreign ID that does
+    not correspond to an existing record of that type.
+    """
+
+    # Asserts that a non-existent client_id raises RecordNotFoundError
+    def test_missing_client_raises(self):
+        records = [{"Type": "Client", "ID": 999, "Name": "Other"}]
+        with pytest.raises(RecordNotFoundError):
+            create_flight(
+                records, client_id=1, airline_id=10,
+                date=DATE, start_city="London", end_city="Rome",
+            )
+
+    # Asserts that a non-existent airline_id raises RecordNotFoundError
+    def test_missing_airline_raises(self):
+        records = [
+            {"Type": "Client", "ID": 1, "Name": "Alice"},
+            {"Type": "Airline", "ID": 999, "Company Name": "Other"},
+        ]
+        with pytest.raises(RecordNotFoundError):
+            create_flight(
+                records, client_id=1, airline_id=10,
+                date=DATE, start_city="London", end_city="Rome",
+            )
+
+    # Asserts that a flight is created when both Client and Airline exist
+    def test_valid_ids_creates_flight(self):
+        records = [
+            {"Type": "Client", "ID": 1, "Name": "Alice"},
+            {"Type": "Airline", "ID": 10, "Company Name": "BA"},
+        ]
+        flight = create_flight(
+            records, client_id=1, airline_id=10,
+            date=DATE, start_city="London", end_city="Rome",
+        )
+        assert flight["Type"] == "Flight"
+        assert flight["Client_ID"] == 1
+        assert flight["Airline_ID"] == 10

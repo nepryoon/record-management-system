@@ -1,10 +1,10 @@
 """
 Configuration sub-package for the Record Management System.
 
-Re-exports the FILE_PATH constant from the settings module so that
-other packages can import it directly from ``src.conf``.
+Re-exports path constants from the settings module so that other
+packages can import them directly from ``src.conf``.
 """
 
-from .settings import FILE_PATH
+from .settings import DATA_FILE, FILE_PATH
 
-__all__ = ["FILE_PATH"]
+__all__ = ["DATA_FILE", "FILE_PATH"]
