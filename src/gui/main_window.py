@@ -88,6 +88,22 @@ def open_main_window() -> None:
     root.geometry(f"{WIN_W}x{WIN_H}+{x}+{y}")
 
     # ----------------------------------------------------------
+    # Maximum window size cap
+    #
+    # Without a maxsize constraint the three module buttons expand via
+    # sticky="nsew" to fill the entire screen when the user maximises
+    # the window, making icons appear lost in a vast blue field and
+    # erasing the white space that visually separates the modules.
+    #
+    # The cap is derived proportionally from the HiDPI ratio so that it
+    # scales correctly across different screen densities, and is clamped
+    # to the monitor bounds to avoid exceeding the physical screen edges.
+    # ----------------------------------------------------------
+    MAX_W = min(int(960 * ratio), mon_w - 40)
+    MAX_H = min(int(900 * ratio), phys_h - 80)
+    root.maxsize(MAX_W, MAX_H)
+
+    # ----------------------------------------------------------
     # Header frame
     # Displays the application title and subtitle at the top of the window
     # ----------------------------------------------------------
@@ -274,7 +290,7 @@ def open_main_window() -> None:
     if client_icon:
         client_btn.config(image=client_icon)
         client_btn.image = client_icon  # Retain reference to prevent garbage collection
-    client_btn.grid(row=0, column=0, padx=10, pady=8, sticky="nsew")
+    client_btn.grid(row=0, column=0, padx=10, pady=16, sticky="nsew")  # Increased pady preserves visual separation
     client_btn.bind("<Enter>", on_enter)
     client_btn.bind("<Leave>", on_leave)
 
@@ -288,7 +304,7 @@ def open_main_window() -> None:
     if airline_icon:
         airline_btn.config(image=airline_icon)
         airline_btn.image = airline_icon
-    airline_btn.grid(row=0, column=1, padx=10, pady=8, sticky="nsew")
+    airline_btn.grid(row=0, column=1, padx=10, pady=16, sticky="nsew")  # Increased pady preserves visual separation
     airline_btn.bind("<Enter>", on_enter)
     airline_btn.bind("<Leave>", on_leave)
 
@@ -302,7 +318,7 @@ def open_main_window() -> None:
     if flight_icon:
         flight_btn.config(image=flight_icon)
         flight_btn.image = flight_icon
-    flight_btn.grid(row=1, column=0, columnspan=2, padx=10, pady=8, sticky="nsew")
+    flight_btn.grid(row=1, column=0, columnspan=2, padx=10, pady=16, sticky="nsew")  # Increased pady preserves visual separation
     flight_btn.bind("<Enter>", on_enter)
     flight_btn.bind("<Leave>", on_leave)
 
