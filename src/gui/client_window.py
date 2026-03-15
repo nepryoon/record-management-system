@@ -1,3 +1,12 @@
+"""
+Client record management window for the Travel Record Management System.
+
+Implements ``ClientWindow``, a modal ``tk.Toplevel`` that provides a
+full CRUD interface (Create, Search, Update, Delete) for Client records
+stored in the shared JSONL data file.  Includes per-field validation and
+cascade ID propagation to associated Flight records.
+"""
+
 import os
 import re
 import tkinter as tk
@@ -14,7 +23,7 @@ class ClientWindow(tk.Toplevel):
     for client records stored in the shared JSONL data file.
     """
 
-    def __init__(self, master):
+    def __init__(self, master: tk.Misc) -> None:  # PEP 8 fix: add type annotations
         super().__init__(master)
 
         # ----------------------------------------------------------
@@ -40,7 +49,7 @@ class ClientWindow(tk.Toplevel):
         # x-coordinate and the estimated per-monitor width.
         # ----------------------------------------------------------
         BASE_SCALING = 96.0 / 72.0  # Standard tkinter baseline scaling factor
-        actual_scaling = float(self.tk.call('tk', 'scaling'))  # Current system scaling
+        actual_scaling = float(self.tk.call("tk", "scaling"))  # PEP 8 fix: use double quotes consistently
         ratio = actual_scaling / BASE_SCALING  # HiDPI multiplier (1.0 on normal displays)
 
         # Total virtual desktop dimensions (spanning all connected monitors)
@@ -151,7 +160,7 @@ class ClientWindow(tk.Toplevel):
     # GUI construction
     # ----------------------------------------------------------
 
-    def create_widgets(self):
+    def create_widgets(self) -> None:  # PEP 8 fix: add type annotations
         """Create and lay out all GUI widgets within the window."""
 
         # Header bar — dark background with centred title and icon
@@ -245,11 +254,11 @@ class ClientWindow(tk.Toplevel):
             ("Clear",  "#7f8c8d", self.clear_form),
         ]
 
-        def on_enter(e):
+        def on_enter(e: tk.Event) -> None:  # PEP 8 fix: add type annotations
             """Darken button on mouse-over."""
             e.widget['bg'] = '#34495e'
 
-        def on_leave(e, color):
+        def on_leave(e: tk.Event, color: str) -> None:  # PEP 8 fix: add type annotations
             """Restore original button colour when cursor leaves."""
             e.widget['bg'] = color
 
@@ -359,7 +368,7 @@ class ClientWindow(tk.Toplevel):
     # Treeview population
     # ----------------------------------------------------------
 
-    def populate_treeview(self):
+    def populate_treeview(self) -> None:  # PEP 8 fix: add type annotations
         """
         Clear and repopulate the Treeview with all client records.
         Shows an empty-state label when no records are present and
@@ -398,7 +407,7 @@ class ClientWindow(tk.Toplevel):
     # Input helpers
     # ----------------------------------------------------------
 
-    def get_client_id(self):
+    def get_client_id(self) -> int | None:  # PEP 8 fix: add type annotations
         """
         Read and return the ID field as an integer.
         Displays a warning dialogue and returns None if the value is not numeric.
@@ -411,7 +420,7 @@ class ClientWindow(tk.Toplevel):
             messagebox.showwarning("Input Error", "ID must be a number.", parent=self)
             return None
 
-    def clear_form(self):
+    def clear_form(self) -> None:  # PEP 8 fix: add type annotations
         """Clear all entry fields and remove any validation highlights."""
         for entry in self.entries.values():
             entry.delete(0, tk.END)
@@ -421,11 +430,11 @@ class ClientWindow(tk.Toplevel):
         self.entries["ID"].focus_set()
         self.status.config(text="✔ Form cleared. Ready")
 
-    def get_entry_values(self):
+    def get_entry_values(self) -> dict[str, str]:  # PEP 8 fix: add type annotations
         """Return a dictionary of all field values, stripped of leading/trailing whitespace."""
         return {f: self.entries[f].get().strip() for f in self.fields}
 
-    def validate_field(self, field, value):
+    def validate_field(self, field: str, value: str) -> bool:  # PEP 8 fix: add type annotations
         """
         Validate a single field value according to its expected data type.
         Optional fields that are empty are considered valid.
@@ -439,7 +448,7 @@ class ClientWindow(tk.Toplevel):
             return bool(re.match(r"^[A-Za-z\s'-]+$", value))  # Letters and spaces only
         return True  # All other fields accept any non-empty string
 
-    def validate_entries(self, values):
+    def validate_entries(self, values: dict[str, str]) -> tuple[bool, str | None]:  # PEP 8 fix
         """
         Validate all entry values.
 
@@ -458,7 +467,7 @@ class ClientWindow(tk.Toplevel):
     # CRUD operations
     # ----------------------------------------------------------
 
-    def create_client(self):
+    def create_client(self) -> None:  # PEP 8 fix: add type annotations
         """
         Validate the form and create a new client record.
         Highlights any missing required fields in red before saving.
@@ -517,7 +526,7 @@ class ClientWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Success", "✔ Client record added successfully.", parent=self)
 
-    def search_client(self):
+    def search_client(self) -> None:  # PEP 8 fix: add type annotations
         """
         Search for a client by ID.
         If additional fields are filled in, verifies that they match the stored record.
@@ -576,7 +585,7 @@ class ClientWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Search Result", f"✔ Client '{record['Name']}' found.", parent=self)
 
-    def update_client(self):
+    def update_client(self) -> None:  # PEP 8 fix: add type annotations
         """
         Update an existing client record identified by the ID field.
         Cascades any ID change to associated flight records.
@@ -631,7 +640,7 @@ class ClientWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Success", "✔ Client record updated successfully.", parent=self)
 
-    def delete_client(self):
+    def delete_client(self) -> None:  # PEP 8 fix: add type annotations
         """
         Delete the selected client record and all associated flight records
         after asking the user for confirmation.
@@ -675,7 +684,7 @@ class ClientWindow(tk.Toplevel):
     # Treeview selection event
     # ----------------------------------------------------------
 
-    def on_tree_select(self, event):
+    def on_tree_select(self, event: tk.Event) -> None:  # PEP 8 fix: add type annotations
         """Populate the form fields when the user selects a row in the Treeview."""
         selected = self.tree.selection()
         if not selected:
@@ -693,7 +702,7 @@ class ClientWindow(tk.Toplevel):
     # Window close event
     # ----------------------------------------------------------
 
-    def on_close(self):
+    def on_close(self) -> None:  # PEP 8 fix: add type annotations
         """Persist all records to the JSONL file before destroying the window."""
         save_records(self.records)
         self.destroy()

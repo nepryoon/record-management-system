@@ -1,3 +1,11 @@
+"""
+Dashboard window for the Travel Record Management System.
+
+Provides ``open_main_window()``, which builds and runs the primary
+tkinter dashboard from which the Client, Airline, and Flight
+record-management modules are launched.
+"""
+
 import os
 import tkinter as tk
 from tkinter import messagebox
@@ -7,7 +15,7 @@ from .airline_window import AirlineWindow
 from .flight_window import FlightWindow
 
 
-def open_main_window():
+def open_main_window() -> None:
     """
     Initialises the primary dashboard for the Travel Record Management System.
 
@@ -122,12 +130,12 @@ def open_main_window():
     )
     status.pack(side="left", padx=10, fill="x", expand=True)
 
-    def update_status(msg):
+    def update_status(msg: str) -> None:  # PEP 8 fix: add type annotations
         """Update the footer status label with a real-time message."""
         status.config(text=f"Status: {msg}")
         root.update_idletasks()  # Flush pending UI events immediately
 
-    def confirm_exit():
+    def confirm_exit() -> None:  # PEP 8 fix: add type annotations
         """
         Prompt the user for confirmation before closing the application.
         Brings the window to the foreground first to ensure the dialogue
@@ -172,11 +180,11 @@ def open_main_window():
     # ----------------------------------------------------------
     # Button hover effect callbacks
     # ----------------------------------------------------------
-    def on_enter(e):
+    def on_enter(e: tk.Event) -> None:  # PEP 8 fix: add type annotations
         """Highlight the button when the mouse cursor moves over it."""
         e.widget.config(bg="#465d75", relief="solid", bd=4)
 
-    def on_leave(e):
+    def on_leave(e: tk.Event) -> None:  # PEP 8 fix: add type annotations
         """Restore the default button style when the cursor leaves."""
         e.widget.config(bg="#34495e", relief="raised", bd=3)
 
@@ -204,40 +212,40 @@ def open_main_window():
     # registers a close handler to reset the status bar on exit.
     # ----------------------------------------------------------
 
-    def open_clients():
+    def open_clients() -> None:  # PEP 8 fix: add type annotations
         """Open the Client Record Management window."""
         update_status("Opening Clients Module...")
         client_window = ClientWindow(root)
 
-        def on_close():
+        def on_close() -> None:  # PEP 8 fix: add type annotations
             update_status("System Ready")
             client_window.destroy()
 
         client_window.protocol("WM_DELETE_WINDOW", on_close)
 
-    def open_airlines():
+    def open_airlines() -> None:  # PEP 8 fix: add type annotations
         """Open the Airline Record Management window."""
         update_status("Opening Airlines Module...")
         airline_window = AirlineWindow(root)
 
-        def on_close():
+        def on_close() -> None:  # PEP 8 fix: add type annotations
             update_status("System Ready")
             airline_window.destroy()
 
         airline_window.protocol("WM_DELETE_WINDOW", on_close)
 
-    def open_flights():
+    def open_flights() -> None:  # PEP 8 fix: add type annotations
         """Open the Flight Record Management window."""
         update_status("Opening Flights Module...")
         flight_window = FlightWindow(root)
 
-        def on_close():
+        def on_close() -> None:  # PEP 8 fix: add type annotations
             update_status("System Ready")
             flight_window.destroy()
 
         flight_window.protocol("WM_DELETE_WINDOW", on_close)
 
-    def show_help():
+    def show_help() -> None:  # PEP 8 fix: add type annotations
         """Display a brief help dialogue describing each module."""
         root.lift()
         root.focus_force()

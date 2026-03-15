@@ -583,6 +583,11 @@ builds and runs the primary dashboard window of the application.
 > 💬 **Comments added:** PEP 8 fixes applied (quote consistency,
 > alignment spaces removed); British English docstrings confirmed and
 > supplemented throughout.
+> ⚠️ **Audit fix — PEP 8:** Module-level docstring was missing; added.
+> Type annotations added to `open_main_window()` and all inner
+> functions (`update_status`, `confirm_exit`, `on_enter`, `on_leave`,
+> `open_clients`, `open_airlines`, `open_flights`, `show_help`, and
+> their nested `on_close` callbacks).
 
 ---
 
@@ -640,6 +645,14 @@ managing Airline records.
 
 > ⚠️ **Fix applied:** Extra alignment spaces removed from
 > `aid  =` assignments (`# PEP 8 fix` comments added).
+> ⚠️ **Audit fix — PEP 8:** Module-level docstring was missing; added.
+> Single quotes in `self.tk.call('tk', 'scaling')` corrected to double
+> quotes for file-wide consistency (`# PEP 8 fix` comment added).
+> Type annotations added to `__init__` and all public methods
+> (`create_widgets`, `populate_treeview`, `clear_form`,
+> `create_airline`, `search_airline`, `update_airline`,
+> `delete_airline`, `on_tree_select`, `on_close`) and inner functions
+> (`on_enter`, `on_leave`).
 > 💬 **Comments added:** British English module-level docstring and
 > comprehensive method docstrings added throughout.
 
@@ -706,6 +719,15 @@ managing Client records.
 > ⚠️ **Fix applied:** Extra alignment spaces removed from
 > `values["ID"]   =` assignment and the `delete_client` filter
 > (`# PEP 8 fix` comments added).
+> ⚠️ **Audit fix — PEP 8:** Module-level docstring was missing; added.
+> Single quotes in `self.tk.call('tk', 'scaling')` corrected to double
+> quotes for file-wide consistency (`# PEP 8 fix` comment added).
+> Type annotations added to `__init__` and all public methods
+> (`create_widgets`, `populate_treeview`, `get_client_id`,
+> `clear_form`, `get_entry_values`, `validate_field`,
+> `validate_entries`, `create_client`, `search_client`,
+> `update_client`, `delete_client`, `on_tree_select`, `on_close`)
+> and inner functions (`on_enter`, `on_leave`).
 > 💬 **Comments added:** British English module-level docstring and
 > comprehensive method docstrings added throughout.
 
@@ -760,6 +782,14 @@ managing Flight records.
 > removed from variable assignments and dict literals in
   `create_flight`, `update_flight`, and `on_tree_select`
 > (`# PEP 8 fix` comments added).
+> ⚠️ **Audit fix — PEP 8:** Module-level docstring was missing; added.
+> Single quotes in `self.tk.call('tk', 'scaling')` corrected to double
+> quotes for file-wide consistency (`# PEP 8 fix` comment added).
+> Type annotations added to `__init__` and all public methods
+> (`create_widgets`, `populate_treeview`, `clear_form`,
+> `create_flight`, `search_flight`, `update_flight`, `delete_flight`,
+> `on_tree_select`, `on_close`) and inner functions (`on_enter`,
+> `on_leave`).
 > 💬 **Comments added:** British English module-level docstring and
 > comprehensive method docstrings added throughout.
 
@@ -789,6 +819,17 @@ runtime logic are present; consumers import directly from the
 sub-modules.
 
 > 💬 **Comments added:** British English module-level docstring added.
+
+---
+
+### `tests/__init__.py`
+
+Package initialiser for the `tests` directory. Previously an empty
+file; now contains a module-level docstring summarising the scope
+of the test suite and the tools required to run it.
+
+> 💬 **Audit fix — Comments:** Module-level docstring was missing;
+> added a British English summary describing the test suite contents.
 
 ---
 

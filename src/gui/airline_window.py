@@ -1,3 +1,11 @@
+"""
+Airline record management window for the Travel Record Management System.
+
+Implements ``AirlineWindow``, a modal ``tk.Toplevel`` that provides a
+full CRUD interface (Create, Search, Update, Delete) for Airline records
+stored in the shared JSONL data file.
+"""
+
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -13,7 +21,7 @@ class AirlineWindow(tk.Toplevel):
     Provides a full CRUD interface: Create, Search, Update, and Delete.
     """
 
-    def __init__(self, master=None):
+    def __init__(self, master: tk.Misc | None = None) -> None:  # PEP 8 fix
         super().__init__(master)
 
         # ----------------------------------------------------------
@@ -39,7 +47,7 @@ class AirlineWindow(tk.Toplevel):
         # x-coordinate and the estimated per-monitor width.
         # ----------------------------------------------------------
         BASE_SCALING = 96.0 / 72.0  # Standard tkinter baseline scaling factor
-        actual_scaling = float(self.tk.call('tk', 'scaling'))  # Current system scaling
+        actual_scaling = float(self.tk.call("tk", "scaling"))  # PEP 8 fix: use double quotes consistently
         ratio = actual_scaling / BASE_SCALING  # HiDPI multiplier (1.0 on normal displays)
 
         # Total virtual desktop dimensions (spanning all connected monitors)
@@ -145,7 +153,7 @@ class AirlineWindow(tk.Toplevel):
     # GUI construction
     # ----------------------------------------------------------
 
-    def create_widgets(self):
+    def create_widgets(self) -> None:  # PEP 8 fix: add type annotations
         """Create and lay out all GUI widgets within the window."""
 
         # Header bar — dark background with centred title and icon
@@ -220,11 +228,11 @@ class AirlineWindow(tk.Toplevel):
             ("Clear",  "#7f8c8d", self.clear_form),
         ]
 
-        def on_enter(e):
+        def on_enter(e: tk.Event) -> None:  # PEP 8 fix: add type annotations
             """Darken button on mouse-over."""
             e.widget['bg'] = '#34495e'
 
-        def on_leave(e, color):
+        def on_leave(e: tk.Event, color: str) -> None:  # PEP 8 fix: add type annotations
             """Restore original button colour when cursor leaves."""
             e.widget['bg'] = color
 
@@ -313,7 +321,7 @@ class AirlineWindow(tk.Toplevel):
     # Treeview population
     # ----------------------------------------------------------
 
-    def populate_treeview(self):
+    def populate_treeview(self) -> None:  # PEP 8 fix: add type annotations
         """
         Clear and repopulate the Treeview with all airline records.
         Shows an empty-state label when no records are present and
@@ -345,7 +353,7 @@ class AirlineWindow(tk.Toplevel):
     # Input helpers
     # ----------------------------------------------------------
 
-    def clear_form(self):
+    def clear_form(self) -> None:  # PEP 8 fix: add type annotations
         """Clear both entry fields and deselect any highlighted table row."""
         self.id_entry.delete(0, tk.END)
         self.name_entry.delete(0, tk.END)
@@ -358,7 +366,7 @@ class AirlineWindow(tk.Toplevel):
     # CRUD operations
     # ----------------------------------------------------------
 
-    def create_airline(self):
+    def create_airline(self) -> None:  # PEP 8 fix: add type annotations
         """
         Validate the form and create a new airline record.
         Rejects non-numeric IDs and duplicate airline IDs.
@@ -394,7 +402,7 @@ class AirlineWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Success", "✔ Airline added successfully.", parent=self)
 
-    def search_airline(self):
+    def search_airline(self) -> None:  # PEP 8 fix: add type annotations
         """
         Search for an airline by ID.
         If a Company Name is also provided, verifies that it matches
@@ -457,7 +465,7 @@ class AirlineWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Search Result", f"✔ Airline {aid} found.", parent=self)
 
-    def update_airline(self):
+    def update_airline(self) -> None:  # PEP 8 fix: add type annotations
         """Update the Company Name of an existing airline by its ID."""
         # PEP 8 fix: remove extra alignment space before `=`
         aid = self.id_entry.get().strip()
@@ -490,7 +498,7 @@ class AirlineWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Update", "Airline not found.", parent=self)
 
-    def delete_airline(self):
+    def delete_airline(self) -> None:  # PEP 8 fix: add type annotations
         """
         Delete the selected airline record and all associated flight records
         after asking the user for confirmation.
@@ -537,7 +545,7 @@ class AirlineWindow(tk.Toplevel):
     # Treeview selection event
     # ----------------------------------------------------------
 
-    def on_tree_select(self, event):
+    def on_tree_select(self, event: tk.Event) -> None:  # PEP 8 fix: add type annotations
         """Populate the form fields when the user selects a row in the Treeview."""
         selected = self.tree.selection()
         if not selected:
@@ -555,7 +563,7 @@ class AirlineWindow(tk.Toplevel):
     # Window close event
     # ----------------------------------------------------------
 
-    def on_close(self):
+    def on_close(self) -> None:  # PEP 8 fix: add type annotations
         """Persist all records to the JSONL file before destroying the window."""
         save_records(self.records)
         self.destroy()
