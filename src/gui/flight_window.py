@@ -1,12 +1,9 @@
+import os
 import tkinter as tk
 from tkinter import ttk, messagebox
-import sys
-import os
 from datetime import datetime
 
-# Adjust the Python path to allow imports from the parent directory
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from storage import load_records, save_records
+from src.storage import load_records, save_records  # PEP 8 fix
 
 
 class FlightWindow(tk.Toplevel):

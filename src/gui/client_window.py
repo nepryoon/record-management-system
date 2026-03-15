@@ -1,12 +1,9 @@
+import os
+import re
 import tkinter as tk
 from tkinter import ttk, messagebox
-import re
-import sys
-import os
 
-# Adjust the Python path to allow imports from the parent directory
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from storage import load_records, save_records
+from src.storage import load_records, save_records  # PEP 8 fix
 
 
 class ClientWindow(tk.Toplevel):
@@ -91,7 +88,6 @@ class ClientWindow(tk.Toplevel):
         # Load client records from the shared JSONL storage file
         # ----------------------------------------------------------
         self.records = load_records() or []
-        print("DEBUG: Loaded client records:", self.records)
 
         # ----------------------------------------------------------
         # Fields that must not be empty when creating or updating a record

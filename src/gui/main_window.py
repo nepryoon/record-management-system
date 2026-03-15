@@ -1,10 +1,7 @@
+import os
 import tkinter as tk
 from tkinter import messagebox
-import sys
-import os
 
-# Adjust the Python path to allow imports from the parent directory
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from .client_window import ClientWindow
 from .airline_window import AirlineWindow
 from .flight_window import FlightWindow
