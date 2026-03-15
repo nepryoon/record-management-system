@@ -1,3 +1,13 @@
+"""
+Flight record management window for the Travel Record Management System.
+
+Implements ``FlightWindow``, a modal ``tk.Toplevel`` that provides a
+full CRUD interface (Create, Search, Update, Delete) for Flight records
+stored in the shared JSONL data file.  Flight records are identified by
+the composite key ``(Client_ID, Airline_ID, Date)`` rather than a
+surrogate primary key.
+"""
+
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -15,7 +25,7 @@ class FlightWindow(tk.Toplevel):
     Create, Search, Update, and Delete.
     """
 
-    def __init__(self, master=None):
+    def __init__(self, master: tk.Misc | None = None) -> None:  # PEP 8 fix
         super().__init__(master)
 
         # ----------------------------------------------------------
@@ -41,7 +51,7 @@ class FlightWindow(tk.Toplevel):
         # x-coordinate and the estimated per-monitor width.
         # ----------------------------------------------------------
         BASE_SCALING = 96.0 / 72.0  # Standard tkinter baseline scaling factor
-        actual_scaling = float(self.tk.call('tk', 'scaling'))  # Current system scaling
+        actual_scaling = float(self.tk.call("tk", "scaling"))  # PEP 8 fix: use double quotes consistently
         ratio = actual_scaling / BASE_SCALING  # HiDPI multiplier (1.0 on normal displays)
 
         # Total virtual desktop dimensions (spanning all connected monitors)
@@ -147,7 +157,7 @@ class FlightWindow(tk.Toplevel):
     # GUI construction
     # ----------------------------------------------------------
 
-    def create_widgets(self):
+    def create_widgets(self) -> None:  # PEP 8 fix: add type annotations
         """Create and lay out all GUI widgets within the window."""
 
         # Header bar — dark background with centred title and icon
@@ -230,11 +240,11 @@ class FlightWindow(tk.Toplevel):
             ("Clear",  "#7f8c8d", self.clear_form),
         ]
 
-        def on_enter(e):
+        def on_enter(e: tk.Event) -> None:  # PEP 8 fix: add type annotations
             """Darken button on mouse-over."""
             e.widget['bg'] = '#34495e'
 
-        def on_leave(e, color):
+        def on_leave(e: tk.Event, color: str) -> None:  # PEP 8 fix: add type annotations
             """Restore original button colour when cursor leaves."""
             e.widget['bg'] = color
 
@@ -339,7 +349,7 @@ class FlightWindow(tk.Toplevel):
     # Treeview population
     # ----------------------------------------------------------
 
-    def populate_treeview(self):
+    def populate_treeview(self) -> None:  # PEP 8 fix: add type annotations
         """
         Clear and repopulate the Treeview with all flight records.
         Shows an empty-state label when no records are present and
@@ -377,7 +387,7 @@ class FlightWindow(tk.Toplevel):
     # Input helpers
     # ----------------------------------------------------------
 
-    def clear_form(self):
+    def clear_form(self) -> None:  # PEP 8 fix: add type annotations
         """Clear all entry fields and deselect any highlighted table row."""
         for entry in self.entries.values():
             entry.delete(0, tk.END)
@@ -390,7 +400,7 @@ class FlightWindow(tk.Toplevel):
     # CRUD operations
     # ----------------------------------------------------------
 
-    def create_flight(self):
+    def create_flight(self) -> None:  # PEP 8 fix: add type annotations
         """
         Validate the form and create a new flight record.
         Verifies that the referenced Client ID and Airline ID already
@@ -459,7 +469,7 @@ class FlightWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Success", "✔ Flight record added successfully.", parent=self)
 
-    def search_flight(self):
+    def search_flight(self) -> None:  # PEP 8 fix: add type annotations
         """
         Search for all flights belonging to a given Client ID.
         Highlights every matching row in the Treeview on success.
@@ -494,7 +504,7 @@ class FlightWindow(tk.Toplevel):
             self.focus_force()
             messagebox.showinfo("Search", "✖ Flight not found.", parent=self)
 
-    def update_flight(self):
+    def update_flight(self) -> None:  # PEP 8 fix: add type annotations
         """
         Update the currently selected flight record with values from the form.
         The record is matched by the original Client ID, Airline ID, and Date
@@ -550,7 +560,7 @@ class FlightWindow(tk.Toplevel):
         self.focus_force()
         messagebox.showinfo("Success", "✔ Flight record updated successfully.", parent=self)
 
-    def delete_flight(self):
+    def delete_flight(self) -> None:  # PEP 8 fix: add type annotations
         """
         Delete the selected flight record after asking the user for confirmation.
         Matches the record by Client ID, Airline ID, and Date.
@@ -603,7 +613,7 @@ class FlightWindow(tk.Toplevel):
     # Treeview selection event
     # ----------------------------------------------------------
 
-    def on_tree_select(self, event):
+    def on_tree_select(self, event: tk.Event) -> None:  # PEP 8 fix: add type annotations
         """Populate the form fields when the user selects a row in the Treeview."""
         selected = self.tree.selection()
         if not selected:
@@ -620,7 +630,7 @@ class FlightWindow(tk.Toplevel):
     # Window close event
     # ----------------------------------------------------------
 
-    def on_close(self):
+    def on_close(self) -> None:  # PEP 8 fix: add type annotations
         """Persist all records to the JSONL file before destroying the window."""
         save_records(self.records)
         self.grab_release()  # Release the modal grab before destroying
