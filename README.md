@@ -108,7 +108,7 @@ The `requirements.txt` file is intentionally empty because the application depen
 
 ---
 
-## System Architecture
+## Technical & Functional Overview
 
 The Record Management System is structured as a sequence of four co-operating layers, each with a strictly bounded responsibility. The sections below describe the architectural patterns employed, the data model, the persistence mechanism, the graphical user interface design, the CRUD operation flows, and the error handling strategy.
 
@@ -835,7 +835,7 @@ the distribution by module and operation category.
 
 ---
 
-### Standards & Conventions
+## Standards & Conventions
 
 This project was developed in strict adherence to the following published
 standards. Every standard listed below was applied from the first commit and
@@ -977,7 +977,7 @@ Common substitutions applied consistently: *colour* (not color),
 
 ---
 
-### Project Requirements Compliance
+## Project Requirements Compliance
 
 This subsection maps every requirement from the original project
 specification to its implementation status following the compliance
@@ -1043,7 +1043,7 @@ audit.
 | Tests cover persistence round-trip | ✅ | `test_storage.py` verifies save + reload fidelity |
 | Tests cover input validation | ✅ | `RecordNotFoundError` and `DuplicateRecordError` tested; date parsing tested via `test_models.py` |
 | Tests cover file-existence start-up check | ✅ | `test_load_returns_empty_list_when_file_missing` in `test_storage.py` |
-| All tests pass | ✅ | 74 tests pass with `python -m pytest tests/ -v` |
+| All tests pass | ✅ | 77 tests pass with `python -m pytest tests/ -v` |
 
 ---
 
