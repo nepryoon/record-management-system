@@ -23,6 +23,10 @@ def create_flight(
 ) -> dict:
     """Add a new Flight record and return it.
 
+    Raises RecordNotFoundError when Client or Airline records are
+    present in *records* but none matches the supplied *client_id* or
+    *airline_id* respectively, preventing orphaned Flight records.
+
     Parameters:
         records:    The shared list of all record dictionaries.
         client_id:  ID of the client who booked the flight.
@@ -34,7 +38,30 @@ def create_flight(
 
     Returns:
         The newly created Flight record dictionary.
+
+    Raises:
+        RecordNotFoundError: When Client records exist but none has the
+                             given *client_id*, or when Airline records
+                             exist but none has the given *airline_id*.
     """
+    # Guard: raise if Client records exist but none matches client_id
+    if any(r.get("Type") == "Client" for r in records) and not any(
+        r.get("Type") == "Client" and r.get("ID") == client_id
+        for r in records
+    ):
+        raise RecordNotFoundError(
+            f"No client record found with ID={client_id}."
+        )
+
+    # Guard: raise if Airline records exist but none matches airline_id
+    if any(r.get("Type") == "Airline" for r in records) and not any(
+        r.get("Type") == "Airline" and r.get("ID") == airline_id
+        for r in records
+    ):
+        raise RecordNotFoundError(
+            f"No airline record found with ID={airline_id}."
+        )
+
     record = {
         "Type": "Flight",
         "Client_ID": client_id,

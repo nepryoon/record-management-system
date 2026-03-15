@@ -9,11 +9,7 @@ the file represents one record serialised as a JSON object.
 import json
 import os
 
-# Default path to the JSONL record file — stored in the project-level
-# data/ directory.
-DATA_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "data", "records.jsonl"
-)
+from src.conf.settings import DATA_FILE
 
 
 def load_records(filepath: str = DATA_FILE) -> list[dict]:
