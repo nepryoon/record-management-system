@@ -98,6 +98,10 @@ class ClientWindow(tk.Toplevel):
         # ----------------------------------------------------------
         self.records = load_records() or []
 
+        # Dictionary tracking the current sort direction for each column.
+        # True = descending, False = ascending (default on first click).
+        self._sort_reverse: dict[str, bool] = {}
+
         # ----------------------------------------------------------
         # Fields that must not be empty when creating or updating a record.
         # "ID" is intentionally excluded: it is auto-assigned on creation
@@ -314,7 +318,10 @@ class ClientWindow(tk.Toplevel):
         self.tree.tag_configure('evenrow', background='#f2f2f2')
 
         for col in columns:
-            self.tree.heading(col, text=col)
+            self.tree.heading(
+                col, text=col,
+                command=lambda c=col: self._sort_column(c)  # Click header to sort
+            )
             self.tree.column(
                 col,
                 anchor="center",
@@ -372,6 +379,61 @@ class ClientWindow(tk.Toplevel):
             font=("Arial", 12)
         )
         self.status.pack(fill="x", side="bottom")
+
+    # ----------------------------------------------------------
+    # Column sort
+    # ----------------------------------------------------------
+
+    def _sort_column(self, col: str) -> None:
+        """Sort the Treeview table by the specified column.
+
+        Toggles between ascending and descending order on each successive
+        click of the same column header. Numeric columns (ID and any integer
+        foreign-key fields) are sorted as integers to preserve correct
+        numeric order; all other columns are sorted case-insensitively as
+        strings.
+
+        Parameters:
+            col: The internal column identifier string as used in the
+                 Treeview column definitions.
+        """
+        # Toggle the sort direction for this column; default to ascending
+        # on the first click (i.e. when the column has not been sorted before)
+        reverse = self._sort_reverse.get(col, False)
+        self._sort_reverse[col] = not reverse
+
+        # Retrieve all items currently displayed in the Treeview
+        items = self.tree.get_children("")
+
+        # Determine the index of this column in the Treeview column tuple
+        col_index = self.tree["columns"].index(col)
+
+        # Define which columns hold integer values so they can be sorted
+        # numerically rather than lexicographically
+        NUMERIC_COLUMNS = {"ID"}
+
+        # Build a list of (sort_key, item_id) pairs for sorting
+        data = []
+        for item in items:
+            raw = self.tree.item(item, "values")[col_index]
+            if col in NUMERIC_COLUMNS:
+                try:
+                    key = int(raw)
+                except (ValueError, TypeError):
+                    key = 0
+            else:
+                key = str(raw).lower()
+            data.append((key, item))
+
+        # Sort the accumulated rows by their computed key
+        data.sort(key=lambda t: t[0], reverse=reverse)
+
+        # Reinsert every row in the newly sorted order and reapply
+        # alternating row colours so the visual banding remains correct
+        for index, (_, item) in enumerate(data):
+            self.tree.move(item, "", index)
+            tag = "evenrow" if index % 2 == 0 else "oddrow"
+            self.tree.item(item, tags=(tag,))
 
     # ----------------------------------------------------------
     # Treeview population
@@ -688,6 +750,8 @@ class ClientWindow(tk.Toplevel):
         ]
         save_records(self.records)
         self.populate_treeview()
+        # Clear the form so that deleted data is not left displayed in the input fields
+        self.clear_form()
         self.tree.selection_remove(self.tree.selection())
         self.status.config(text=f"✔ Client {client_id} and related flights deleted.")
         self.lift()
