@@ -261,6 +261,371 @@ they never instantiate any tkinter widgets. Key aspects:
 
 ---
 
+## Test Suite Reference
+
+The project contains 77 automated unit tests organised across six test
+modules, one for each non-GUI source module. All tests are written with
+**pytest** and are located in the `tests/` directory. No test
+instantiates a tkinter widget or writes to the real `data/records.jsonl`
+file; file-system tests use pytest's `tmp_path` fixture to operate on
+temporary directories that are cleaned up automatically after each run.
+The entire suite can be executed with:
+
+```bash
+python -m pytest tests/ -v
+```
+
+The sections below document every test class, every test function, the
+assertion it makes, and the specific behaviour or edge case it guards
+against.
+
+---
+
+### tests/test_models.py
+
+Verifies the three dataclass models in `src/models.py` — `ClientRecord`,
+`AirlineRecord`, and `FlightRecord` — covering serialisation,
+deserialisation, automatic type-tag assignment, and the `datetime`
+round-trip.
+
+**Helper:** `make_client(**kwargs)` — constructs a `ClientRecord` with
+sensible defaults (id=1, name="Alice", city="London", etc.), allowing
+individual fields to be overridden via keyword arguments. Reduces
+boilerplate across the five `TestClientRecord` tests.
+
+#### TestClientRecord
+
+Verifies that `ClientRecord` correctly sets its type tag, serialises to
+the canonical dict schema, and can reconstruct itself from that dict.
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_type_is_auto_set` | `c.type == "Client"` | The `type` field is set by `__post_init__`, never by the caller |
+| `test_to_dict_contains_canonical_keys` | `set(d.keys())` equals the 11 specification-mandated field names | Guarantees that the JSONL schema matches the project brief exactly |
+| `test_to_dict_type_value_is_capitalised` | `d["Type"] == "Client"` | Confirms the stored string is `"Client"`, not `"client"` or any other variant |
+| `test_from_dict_round_trip` | Restored instance has same `name` and `type` as the original | Serialise → deserialise produces an identical record |
+| `test_missing_required_field_raises` | `pytest.raises(TypeError)` when `ClientRecord(id=1)` is called | The dataclass machinery enforces all required fields at construction time |
+
+The canonical-keys test is the most important in this group: it directly
+maps the `to_dict()` output against the field names listed in the project
+specification, ensuring that any future field rename would immediately
+break this test and be caught before it reaches the storage layer. The
+round-trip test complements it by confirming that `from_dict` can
+reconstruct the object from whatever `to_dict` produces.
+
+#### TestAirlineRecord
+
+Verifies the same three properties for `AirlineRecord` (type tag,
+canonical keys, capitalised type value, round-trip), omitting the
+missing-field test because `AirlineRecord` has only two required fields
+and the dataclass behaviour is already covered by `TestClientRecord`.
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_type_is_auto_set` | `a.type == "Airline"` | Automatic type tag on `AirlineRecord` |
+| `test_to_dict_contains_canonical_keys` | `set(d.keys()) == {"ID", "Type", "Company Name"}` | Canonical schema has exactly 3 keys |
+| `test_to_dict_type_value_is_capitalised` | `d["Type"] == "Airline"` | Stored string is precisely `"Airline"` |
+| `test_round_trip` | `restored.company_name == "BritAir"` | Serialise → deserialise preserves the company name |
+
+#### TestFlightRecord
+
+Verifies `FlightRecord` with particular attention to `datetime` handling:
+the `date` field enters as a `datetime` object, is serialised to an
+ISO-8601 string by `to_dict()`, and is restored to a `datetime` object by
+`from_dict()`.
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_type_is_auto_set` | `f.type == "Flight"` | Automatic type tag on `FlightRecord` |
+| `test_to_dict_contains_canonical_keys` | `set(d.keys()) == {"Type", "Client_ID", "Airline_ID", "Date", "Start City", "End City"}` | Canonical schema has exactly 6 keys; note `Client_ID` and `Airline_ID` use underscore notation |
+| `test_to_dict_type_value_is_capitalised` | `d["Type"] == "Flight"` | Stored string is precisely `"Flight"` |
+| `test_date_serialised_to_string` | `isinstance(d["Date"], str)` | JSON cannot natively store `datetime` objects; serialisation must convert to a string |
+| `test_from_dict_restores_datetime` | `isinstance(restored.date, datetime)` and `restored.date.year == 2025` | Deserialisation must reconstruct a proper `datetime` object, not leave the field as a raw string |
+
+The two `datetime` tests together verify the full persistence contract for
+the `Date` field: the first confirms the outbound path (Python →
+JSON-safe string), the second confirms the inbound path (string → Python
+`datetime`). Without both passing, date values would either fail to
+serialise or be unusable after loading.
+
+---
+
+### tests/test_storage.py
+
+Verifies `load_records()` and `save_records()` in `src/storage.py`,
+covering file-not-found resilience, single-record persistence,
+multi-record persistence, and overwrite semantics.
+
+**Fixture:** pytest's built-in `tmp_path` fixture provides a fresh
+temporary directory for each test, ensuring tests never write to the real
+`data/records.jsonl` file and clean up automatically.
+
+No test classes — four standalone test functions:
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_load_returns_empty_list_when_file_missing` | `result == []` | Application must start cleanly when no data file exists yet |
+| `test_save_and_reload` | `len(loaded) == 1` and `loaded[0]["name"] == "Alice"` | A record saved then loaded must have identical field values |
+| `test_save_multiple_records` | `len(load_records(filepath)) == 5` | All records in a list of 5 must survive a save/load cycle |
+| `test_overwrite_on_save` | After two saves, `len(loaded) == 2` (not 3) | `save_records` overwrites the file entirely; it must not append to existing content |
+
+The overwrite test is critical for data integrity: if `save_records`
+appended rather than replaced, deleted records would reappear on the next
+application start. The file-missing test guards the startup path —
+`load_records` must return an empty list rather than raising
+`FileNotFoundError`, so first-time users are not confronted with a crash
+before creating any data.
+
+---
+
+### tests/test_repository.py
+
+Verifies `RecordRepository` in `src/repository.py`, covering all five
+public methods (`add`, `delete`, `update`, `search`, `get_all`) and both
+custom exceptions (`DuplicateRecordError`, `RecordNotFoundError`).
+
+**Fixtures:**
+- `repo` — yields a fresh `RecordRepository()` with no records.
+- `client_record` — yields a minimal Client dict
+  `{"Type": "Client", "ID": 1, "Name": "Alice", "City": "London"}`.
+
+No test classes — eight standalone test functions:
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_add_and_search` | `len(results) == 1` and `results[0]["Name"] == "Alice"` | A record added to the repository can be found by type and ID |
+| `test_add_duplicate_raises` | `pytest.raises(DuplicateRecordError)` on second `add` of same record | Inserting two records with identical type and ID must be rejected |
+| `test_delete_record` | `repo.search(Type="Client", ID=1) == []` after deletion | A deleted record must no longer appear in search results |
+| `test_delete_nonexistent_raises` | `pytest.raises(RecordNotFoundError)` when deleting ID 999 | Deleting a non-existent record must raise a typed exception, not fail silently |
+| `test_update_record` | `repo.search(ID=1)[0]["City"] == "Manchester"` after update | Updated field value is persisted in the in-memory list |
+| `test_update_nonexistent_raises` | `pytest.raises(RecordNotFoundError)` when updating ID 999 | Updating a non-existent record must raise a typed exception |
+| `test_search_by_arbitrary_field` | `len(repo.search(City="London")) == 1` | `search()` filters correctly on any field, not just ID and Type |
+| `test_get_all` | `len(all_records) == 1` | `get_all()` returns a list of the correct length |
+
+The repository tests are deliberately decoupled from the GUI and the file
+system: they operate entirely in memory, making them instantaneous and
+deterministic. The duplicate-detection test is particularly important
+because the GUI auto-assigns IDs; if the auto-increment logic ever
+produced a collision, `DuplicateRecordError` would surface here before it
+could corrupt the data file.
+
+---
+
+### tests/test_airline_record.py
+
+Verifies the four pure CRUD functions in `src/record/airline_record.py` —
+`create_airline`, `delete_airline`, `update_airline`, `search_airlines` —
+including cascade deletion of associated Flight records.
+
+**Helpers:**
+- `_sample_records()` — returns a fresh empty list `[]`; used at the
+  start of every test to guarantee isolation between tests.
+
+#### TestCreateAirline
+
+Verifies that `create_airline` appends the correct record to the list and
+assigns fields according to the specification schema.
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_record_added` | `len(records) == 1` | Record is appended to the shared list |
+| `test_id_starts_at_one` | `rec["ID"] == 1` | First airline on an empty list gets ID 1, not 0 |
+| `test_id_auto_increments` | Second record gets `ID == 2` | Each subsequent airline receives `max(existing) + 1` |
+| `test_type_is_airline` | `rec["Type"] == "Airline"` | Type tag is set automatically to `"Airline"` |
+| `test_company_name_stored` | `rec["Company Name"] == "EuroJet"` | The supplied company name is stored under the canonical key |
+| `test_canonical_schema_keys_present` | `set(rec.keys()) == {"ID", "Type", "Company Name"}` | Record contains exactly the three specification-mandated fields |
+
+#### TestDeleteAirline
+
+Verifies that `delete_airline` removes the correct record and cascades
+to associated Flight records.
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_record_removed` | `records == []` after deletion | Record is fully removed from the list |
+| `test_nonexistent_id_raises` | `pytest.raises(RecordNotFoundError)` for ID 999 | Attempting to delete an absent airline raises a typed exception |
+| `test_only_matching_record_removed` | `len(records) == 1` and remaining record is SkyLine | Only the targeted airline is deleted; others are untouched |
+| `test_cascade_deletes_associated_flights` | No Flight records remain after airline deletion | Deleting an airline must cascade-delete all flights that reference its ID |
+| `test_cascade_leaves_other_flights_intact` | One flight remains (for `Airline_ID == 2`) | Cascade must be scoped to the deleted airline; flights of other airlines survive |
+
+The two cascade tests together verify both directions of the cascade
+contract: `test_cascade_deletes_associated_flights` confirms the positive
+case (orphaned flights are removed), and
+`test_cascade_leaves_other_flights_intact` confirms the negative case
+(unrelated flights are unaffected). Both tests are necessary because a
+naive implementation that deletes all flights would pass only the first.
+
+#### TestUpdateAirline
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_field_changed` | `records[0]["Company Name"] == "NewAir"` | Updated field value is persisted in place |
+| `test_nonexistent_id_raises` | `pytest.raises(RecordNotFoundError)` for ID 999 | Updating a non-existent airline raises a typed exception |
+
+#### TestSearchAirlines
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_returns_correct_record` | `len(results) == 1` and `results[0]["Company Name"] == "BritAir"` | Filter by company name returns only the matching airline |
+| `test_empty_result_when_no_match` | `search_airlines(...) == []` | Non-matching filter returns an empty list, not an exception |
+| `test_returns_all_when_no_filter` | `len(search_airlines(records)) == 2` | Calling `search_airlines` with no filters returns every airline |
+
+---
+
+### tests/test_client_record.py
+
+Verifies the four pure CRUD functions in `src/record/client_record.py` —
+`create_client`, `delete_client`, `update_client`, `search_clients` —
+including cascade deletion of associated Flights and cascade propagation
+of Client ID changes.
+
+**Helpers:**
+- `_sample_records()` — returns `[]`.
+- `_make_client(records, name="Alice", **kwargs)` — creates a fully-formed
+  Client record with all ten non-ID fields populated to sensible defaults
+  (address, city, state, zip code, country, phone number), appends it to
+  `records`, and returns it. Keyword arguments override any default.
+
+#### TestCreateClient
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_record_added` | `len(records) == 1` | Record is appended to the list |
+| `test_id_starts_at_one` | `rec["ID"] == 1` | First client on an empty list gets ID 1 |
+| `test_id_auto_increments` | Second record gets `ID == 2` | Auto-increment assigns `max(existing) + 1` |
+| `test_type_is_client` | `rec["Type"] == "Client"` | Type tag is `"Client"` |
+| `test_fields_stored_correctly` | `rec["Name"] == "Carol"` and `rec["City"] == "Bristol"` | Overridden field values are stored correctly |
+| `test_canonical_schema_keys_present` | `set(rec.keys())` equals the 11 specification-mandated field names | All required fields are present with the correct key names |
+
+#### TestDeleteClient
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_record_removed` | `records == []` after deletion | Client is fully removed |
+| `test_nonexistent_id_raises` | `pytest.raises(RecordNotFoundError)` for ID 999 | Typed exception on absent client |
+| `test_only_matching_record_removed` | Remaining record is Bob (ID 2) | Only the targeted client is removed |
+| `test_cascade_deletes_associated_flights` | No Flight records remain | Deleting a client cascade-deletes all their flights |
+| `test_cascade_leaves_other_flights_intact` | One flight remains with `Client_ID == 2` | Cascade is scoped to the deleted client only |
+
+#### TestUpdateClient
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_field_changed` | `records[0]["City"] == "Manchester"` | Updated field is persisted |
+| `test_nonexistent_id_raises` | `pytest.raises(RecordNotFoundError)` for ID 999 | Typed exception on absent client |
+| `test_other_fields_unchanged` | `records[0]["Name"] == "Alice"` after city update | Updating one field must not alter other fields |
+| `test_cascade_updates_flight_client_id` | `flights[0]["Client_ID"] == 99` after `update_client(records, 1, ID=99)` | Changing a Client's ID must propagate the new value to `Client_ID` in all linked flights |
+
+`test_cascade_updates_flight_client_id` is the most complex test in this
+module: it creates a client, creates a flight referencing that client,
+then updates the client's ID and asserts that the flight's `Client_ID`
+field was silently updated to match. This guards the cascade propagation
+logic in `update_client` that prevents flights from becoming orphaned when
+a client ID changes.
+
+#### TestSearchClients
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_returns_correct_record` | `len(results) == 1` and `results[0]["Name"] == "Alice"` | Filter by city returns only the matching client |
+| `test_empty_result_when_no_match` | `search_clients(...) == []` | Non-matching filter returns empty list |
+| `test_returns_all_when_no_filter` | `len(search_clients(records)) == 2` | No-filter call returns every client |
+
+---
+
+### tests/test_flight_record.py
+
+Verifies the four pure CRUD functions in `src/record/flight_record.py` —
+`create_flight`, `delete_flight`, `update_flight`, `search_flights` —
+plus a dedicated referential integrity class that verifies the foreign-key
+validation introduced in the audit. Because Flight records have no
+surrogate primary key, all operations use the composite natural key
+`(Client_ID, Airline_ID, Date)`.
+
+**Module-level constants:**
+- `DATE = "2025-06-15T09:00:00"` — the default ISO-8601 date string used
+  across most tests.
+- `DATE2 = "2025-07-20T14:00:00"` — a second date used where two distinct
+  flights are needed.
+
+**Helper:** `_make_flight(records, client_id=1, airline_id=10, date=DATE,
+start_city="London", end_city="Rome")` — creates a flight with sensible
+defaults. Keyword arguments override any default.
+
+#### TestCreateFlight
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_record_added` | `len(records) == 1` | Flight is appended to the list |
+| `test_fields_stored_correctly` | All five field values match the arguments | Each field is stored under its canonical key |
+| `test_type_is_flight` | `rec["Type"] == "Flight"` | Type tag is `"Flight"` |
+| `test_multiple_flights_added` | `len(records) == 2` after two creates | Multiple flights can coexist with different composite keys |
+| `test_canonical_schema_keys_present` | `set(rec.keys()) == {"Type", "Client_ID", "Airline_ID", "Date", "Start City", "End City"}` | Record contains exactly the six specification-mandated fields |
+
+#### TestDeleteFlight
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_record_removed` | `records == []` | Flight identified by composite key is fully removed |
+| `test_nonexistent_record_raises` | `pytest.raises(RecordNotFoundError)` for `(99, 99, DATE)` | Typed exception when the composite key matches no record |
+| `test_only_matching_record_removed` | Remaining record has `Client_ID == 2` | Only the flight matching the exact composite key is deleted |
+
+#### TestUpdateFlight
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_field_changed` | `records[0]["End City"] == "Paris"` | Updated field is persisted |
+| `test_nonexistent_record_raises` | `pytest.raises(RecordNotFoundError)` for `(99, 99, DATE)` | Typed exception on absent composite key |
+| `test_other_fields_unchanged` | `records[0]["Start City"] == "London"` | Updating one field must not alter other fields |
+
+#### TestSearchFlights
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_returns_correct_record` | `len(results) == 1` and `results[0]["Client_ID"] == 1` | Filter by start city returns only the matching flight |
+| `test_empty_result_when_no_match` | `search_flights(...) == []` | Non-matching filter returns empty list |
+| `test_returns_all_when_no_filter` | `len(search_flights(records)) == 2` | No-filter call returns every flight |
+
+#### TestCreateFlightReferentialIntegrity
+
+Verifies that `create_flight()` enforces referential integrity by
+rejecting any `Client_ID` or `Airline_ID` that does not correspond to an
+existing record in the shared list. These tests use minimal inline record
+dicts rather than the `_make_flight` helper to keep their setup
+independent from the `create_client` and `create_airline` functions.
+
+| Test function | Assertion | Edge case / behaviour guarded |
+|---|---|---|
+| `test_missing_client_raises` | `pytest.raises(RecordNotFoundError)` when `client_id=1` but only `Client ID=999` exists | A flight cannot be created for a client that does not exist |
+| `test_missing_airline_raises` | `pytest.raises(RecordNotFoundError)` when `airline_id=10` but only `Airline ID=999` exists | A flight cannot be created for an airline that does not exist; a valid client is present |
+| `test_valid_ids_creates_flight` | `flight["Type"] == "Flight"` and `flight["Client_ID"] == 1` and `flight["Airline_ID"] == 10` | When both foreign IDs are valid, the flight is created successfully |
+
+These three tests form a complete specification of the referential
+integrity contract: one test for each failure path (missing client,
+missing airline) and one test for the success path. The setup for
+`test_missing_client_raises` deliberately places a Client record with
+ID 999 in the list — not ID 1 — to confirm that the check is an exact
+match, not merely a type-presence check. Similarly,
+`test_missing_airline_raises` includes a valid client to isolate the
+airline check from the client check.
+
+---
+
+The six modules collectively contain 77 tests. The table below shows
+the distribution by module and operation category.
+
+| Module | Create | Delete | Update | Search | Serialisation | Infrastructure | Referential Integrity | Total |
+|---|---|---|---|---|---|---|---|---|
+| `test_models.py` | — | — | — | — | 14 | — | — | 14 |
+| `test_storage.py` | — | — | — | — | — | 4 | — | 4 |
+| `test_repository.py` | 2 | 2 | 2 | 2 | — | — | — | 8 |
+| `test_airline_record.py` | 6 | 5 | 2 | 3 | — | — | — | 16 |
+| `test_client_record.py` | 6 | 5 | 4 | 3 | — | — | — | 18 |
+| `test_flight_record.py` | 5 | 3 | 3 | 3 | — | — | 3 | 17 |
+| **Total** | **19** | **15** | **11** | **11** | **14** | **4** | **3** | **77** |
+
+---
+
 ### Standards & Conventions
 
 This project was developed in strict adherence to the following published
