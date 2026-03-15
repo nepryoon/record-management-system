@@ -1,11 +1,15 @@
-import sys
-import os
-sys.path.append(os.path.dirname(__file__))
+"""
+Application entry point for the Travel Record Management System.
 
-from gui.main_window import open_main_window
+Running this module launches the main tkinter dashboard window from
+which the Client, Airline, and Flight management modules are accessed.
+"""
+
+from src.gui.main_window import open_main_window
 
 
-def main():
+def main() -> None:
+    """Launch the Travel Record Management System dashboard."""
     open_main_window()
 
 

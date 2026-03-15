@@ -1,12 +1,9 @@
+import os
+import re
 import tkinter as tk
 from tkinter import ttk, messagebox
-import re
-import sys
-import os
 
-# Adjust the Python path to allow imports from the parent directory
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from storage import load_records, save_records
+from src.storage import load_records, save_records  # PEP 8 fix
 
 
 class ClientWindow(tk.Toplevel):
@@ -91,7 +88,6 @@ class ClientWindow(tk.Toplevel):
         # Load client records from the shared JSONL storage file
         # ----------------------------------------------------------
         self.records = load_records() or []
-        print("DEBUG: Loaded client records:", self.records)
 
         # ----------------------------------------------------------
         # Fields that must not be empty when creating or updating a record
@@ -509,7 +505,8 @@ class ClientWindow(tk.Toplevel):
             self.status.config(text="Duplicate ID. Client not created.")
             return
 
-        values["ID"]   = cid
+        # PEP 8 fix: remove extra alignment spaces before `=`
+        values["ID"] = cid
         values["Type"] = "Client"
         self.records.append(values)
         save_records(self.records)
@@ -661,8 +658,9 @@ class ClientWindow(tk.Toplevel):
         self.records = [
             r for r in self.records
             if not (
-                (r.get("Type") == "Client"  and str(r.get("ID"))        == client_id) or
-                (r.get("Type") == "Flight"  and str(r.get("Client_ID")) == client_id)
+                # PEP 8 fix: remove extra alignment spaces
+                (r.get("Type") == "Client" and str(r.get("ID")) == client_id) or
+                (r.get("Type") == "Flight" and str(r.get("Client_ID")) == client_id)
             )
         ]
         save_records(self.records)

@@ -1,11 +1,8 @@
+import os
 import tkinter as tk
 from tkinter import ttk, messagebox
-import sys
-import os
 
-# Adjust the Python path to allow imports from the parent directory
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from storage import load_records, save_records
+from src.storage import load_records, save_records  # PEP 8 fix
 
 
 class AirlineWindow(tk.Toplevel):
@@ -90,7 +87,6 @@ class AirlineWindow(tk.Toplevel):
         # Load all records from the shared JSONL storage file
         # ----------------------------------------------------------
         self.records = load_records() or []
-        print("DEBUG: Loaded records:", self.records)
 
         # ----------------------------------------------------------
         # ttk Style configuration
@@ -401,10 +397,12 @@ class AirlineWindow(tk.Toplevel):
     def search_airline(self):
         """
         Search for an airline by ID.
-        If a Company Name is also provided, verifies that it matches the stored record.
-        Populates the form and highlights the matching row in the table on success.
+        If a Company Name is also provided, verifies that it matches
+        the stored record. Populates the form and highlights the
+        matching row in the table on success.
         """
-        aid  = self.id_entry.get().strip()
+        # PEP 8 fix: remove extra alignment space before `=`
+        aid = self.id_entry.get().strip()
         name = self.name_entry.get().strip()
 
         if not aid:
@@ -460,8 +458,9 @@ class AirlineWindow(tk.Toplevel):
         messagebox.showinfo("Search Result", f"✔ Airline {aid} found.", parent=self)
 
     def update_airline(self):
-        """Update the Company Name of an existing airline identified by its ID."""
-        aid  = self.id_entry.get().strip()
+        """Update the Company Name of an existing airline by its ID."""
+        # PEP 8 fix: remove extra alignment space before `=`
+        aid = self.id_entry.get().strip()
         name = self.name_entry.get().strip()
 
         if not aid:
