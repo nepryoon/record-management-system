@@ -1,4 +1,15 @@
-"""CRUD operations for Flight records."""
+"""
+CRUD operations for Flight records.
+
+All functions operate directly on the shared ``records`` list (a list
+of plain dictionaries), mutating it in place so that changes are
+reflected immediately across the application without an additional
+persistence round-trip.
+
+Flight records have no surrogate ID; they are identified by a composite
+key of (Client_ID, Airline_ID, Date).
+"""
+
 from src.exceptions import RecordNotFoundError
 
 
@@ -12,7 +23,17 @@ def create_flight(
 ) -> dict:
     """Add a new Flight record and return it.
 
-    ``date`` must be an ISO-8601 datetime string, e.g. ``"2025-03-14T10:30:00"``.
+    Parameters:
+        records:    The shared list of all record dictionaries.
+        client_id:  ID of the client who booked the flight.
+        airline_id: ID of the operating airline.
+        date:       ISO-8601 datetime string, e.g.
+                    ``"2025-03-14T10:30:00"``.
+        start_city: Departure city name.
+        end_city:   Destination city name.
+
+    Returns:
+        The newly created Flight record dictionary.
     """
     record = {
         "Type": "Flight",
@@ -27,12 +48,25 @@ def create_flight(
 
 
 def delete_flight(
-    records: list[dict], client_id: int, airline_id: int, date: str
+    records: list[dict],
+    client_id: int,
+    airline_id: int,
+    date: str,
 ) -> None:
-    """Remove a Flight record identified by composite key (Client_ID, Airline_ID, Date).
+    """Remove a Flight record identified by composite key.
 
-    Raises RecordNotFoundError if no matching record is found.
+    The composite key is ``(Client_ID, Airline_ID, Date)``.
+
+    Parameters:
+        records:    The shared list of all record dictionaries.
+        client_id:  Client_ID component of the composite key.
+        airline_id: Airline_ID component of the composite key.
+        date:       Date component of the composite key.
+
+    Raises:
+        RecordNotFoundError: When no matching Flight record is found.
     """
+    # Search for the first matching flight and remove it
     for i, r in enumerate(records):
         if (
             r.get("Type") == "Flight"
@@ -49,12 +83,25 @@ def delete_flight(
 
 
 def update_flight(
-    records: list[dict], client_id: int, airline_id: int, date: str, **updates
+    records: list[dict],
+    client_id: int,
+    airline_id: int,
+    date: str,
+    **updates,
 ) -> None:
     """Update fields of a Flight record identified by composite key.
 
-    Raises RecordNotFoundError if no matching record is found.
+    Parameters:
+        records:    The shared list of all record dictionaries.
+        client_id:  Client_ID component of the composite key.
+        airline_id: Airline_ID component of the composite key.
+        date:       Date component of the composite key.
+        **updates:  Keyword arguments specifying fields to overwrite.
+
+    Raises:
+        RecordNotFoundError: When no matching Flight record is found.
     """
+    # Locate and update the matching flight record
     for r in records:
         if (
             r.get("Type") == "Flight"
@@ -71,8 +118,20 @@ def update_flight(
 
 
 def search_flights(records: list[dict], **kwargs) -> list[dict]:
-    """Return all Flight records matching the supplied key-value pairs."""
+    """Return all Flight records matching the supplied key-value pairs.
+
+    Starts from the full set of Flight records and applies each
+    filter criterion in turn.
+
+    Parameters:
+        records:  The shared list of all record dictionaries.
+        **kwargs: Arbitrary field-name / value filter pairs.
+
+    Returns:
+        A list of matching Flight record dictionaries (may be empty).
+    """
     results = [r for r in records if r.get("Type") == "Flight"]
+    # Apply each additional filter in sequence
     for key, value in kwargs.items():
         results = [r for r in results if r.get(key) == value]
     return results

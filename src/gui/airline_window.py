@@ -397,10 +397,12 @@ class AirlineWindow(tk.Toplevel):
     def search_airline(self):
         """
         Search for an airline by ID.
-        If a Company Name is also provided, verifies that it matches the stored record.
-        Populates the form and highlights the matching row in the table on success.
+        If a Company Name is also provided, verifies that it matches
+        the stored record. Populates the form and highlights the
+        matching row in the table on success.
         """
-        aid  = self.id_entry.get().strip()
+        # PEP 8 fix: remove extra alignment space before `=`
+        aid = self.id_entry.get().strip()
         name = self.name_entry.get().strip()
 
         if not aid:
@@ -456,8 +458,9 @@ class AirlineWindow(tk.Toplevel):
         messagebox.showinfo("Search Result", f"✔ Airline {aid} found.", parent=self)
 
     def update_airline(self):
-        """Update the Company Name of an existing airline identified by its ID."""
-        aid  = self.id_entry.get().strip()
+        """Update the Company Name of an existing airline by its ID."""
+        # PEP 8 fix: remove extra alignment space before `=`
+        aid = self.id_entry.get().strip()
         name = self.name_entry.get().strip()
 
         if not aid:

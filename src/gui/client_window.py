@@ -505,7 +505,8 @@ class ClientWindow(tk.Toplevel):
             self.status.config(text="Duplicate ID. Client not created.")
             return
 
-        values["ID"]   = cid
+        # PEP 8 fix: remove extra alignment spaces before `=`
+        values["ID"] = cid
         values["Type"] = "Client"
         self.records.append(values)
         save_records(self.records)
@@ -657,8 +658,9 @@ class ClientWindow(tk.Toplevel):
         self.records = [
             r for r in self.records
             if not (
-                (r.get("Type") == "Client"  and str(r.get("ID"))        == client_id) or
-                (r.get("Type") == "Flight"  and str(r.get("Client_ID")) == client_id)
+                # PEP 8 fix: remove extra alignment spaces
+                (r.get("Type") == "Client" and str(r.get("ID")) == client_id) or
+                (r.get("Type") == "Flight" and str(r.get("Client_ID")) == client_id)
             )
         ]
         save_records(self.records)

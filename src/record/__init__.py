@@ -1,3 +1,11 @@
+"""
+Record sub-package for the Record Management System.
+
+Re-exports the public CRUD functions for Client, Airline, and Flight
+records so that callers can import them directly from ``src.record``
+without referencing the individual sub-modules.
+"""
+
 from .client_record import (
     create_client,
     delete_client,

@@ -43,7 +43,8 @@ def open_main_window():
     # ----------------------------------------------------------
 
     BASE_SCALING = 96.0 / 72.0  # Standard tkinter baseline scaling factor
-    actual_scaling = float(root.tk.call('tk', 'scaling'))  # Current system scaling
+    # PEP 8 fix: use double quotes for string literals consistently
+    actual_scaling = float(root.tk.call("tk", "scaling"))  # Current system scaling
     ratio = actual_scaling / BASE_SCALING  # HiDPI multiplier (1.0 on normal displays)
 
     # Retrieve the total virtual desktop dimensions (spanning all monitors)
@@ -144,9 +145,10 @@ def open_main_window():
     # ----------------------------------------------------------
     assets_path = os.path.join(os.path.dirname(__file__), 'assets')
     try:
-        client_icon  = tk.PhotoImage(file=os.path.join(assets_path, 'client.png'))
+        # PEP 8 fix: remove extra alignment spaces before `=`
+        client_icon = tk.PhotoImage(file=os.path.join(assets_path, 'client.png'))
         airline_icon = tk.PhotoImage(file=os.path.join(assets_path, 'airline.png'))
-        flight_icon  = tk.PhotoImage(file=os.path.join(assets_path, 'flight.png'))
+        flight_icon = tk.PhotoImage(file=os.path.join(assets_path, 'flight.png'))
     except Exception as e:
         print(f"Icon loading error: {e}")
         client_icon = airline_icon = flight_icon = None  # Graceful degradation
@@ -183,16 +185,17 @@ def open_main_window():
     # Applied to all three module buttons for visual consistency.
     # Font and padding are scaled down to suit the 600x600 window.
     # ----------------------------------------------------------
+    # PEP 8 fix: remove extra alignment spaces in dict literal
     btn_style = {
-        "font"    : ("Arial", 13, "bold"),
-        "fg"      : "white",
-        "bg"      : "#34495e",   # Dark blue-grey background
-        "relief"  : "raised",
-        "bd"      : 3,
+        "font": ("Arial", 13, "bold"),
+        "fg": "white",
+        "bg": "#34495e",   # Dark blue-grey background
+        "relief": "raised",
+        "bd": 3,
         "compound": "top",       # Icon rendered above the button label
-        "padx"    : 10,
-        "pady"    : 10,
-        "cursor"  : "hand2"      # Pointer cursor to indicate interactivity
+        "padx": 10,
+        "pady": 10,
+        "cursor": "hand2"      # Pointer cursor to indicate interactivity
     }
 
     # ----------------------------------------------------------

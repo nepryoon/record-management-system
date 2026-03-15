@@ -399,11 +399,12 @@ class FlightWindow(tk.Toplevel):
         # Reload records to ensure no stale data is used
         self.records = load_records() or []
 
-        client_id  = self.entries["Client ID *"].get().strip()
+        # PEP 8 fix: remove extra alignment spaces before `=`
+        client_id = self.entries["Client ID *"].get().strip()
         airline_id = self.entries["Airline ID *"].get().strip()
-        date       = self.entries["Date (YYYY-MM-DD HH:MM) *"].get().strip()
-        start      = self.entries["Start City *"].get().strip()
-        end        = self.entries["End City *"].get().strip()
+        date = self.entries["Date (YYYY-MM-DD HH:MM) *"].get().strip()
+        start = self.entries["Start City *"].get().strip()
+        end = self.entries["End City *"].get().strip()
 
         # All fields are mandatory for a flight record
         if not all([client_id, airline_id, date, start, end]):
@@ -441,13 +442,14 @@ class FlightWindow(tk.Toplevel):
             messagebox.showerror("Error", f"Airline ID {airline_id} does not exist.", parent=self)
             return
 
+        # PEP 8 fix: remove extra alignment spaces in dict literal
         self.records.append({
-            "Client_ID":  int(client_id),
+            "Client_ID": int(client_id),
             "Airline_ID": int(airline_id),
-            "Date":       date,
+            "Date": date,
             "Start City": start,
-            "End City":   end,
-            "Type":       "Flight"
+            "End City": end,
+            "Type": "Flight"
         })
         save_records(self.records)
         self.populate_treeview()
@@ -462,7 +464,8 @@ class FlightWindow(tk.Toplevel):
         Search for all flights belonging to a given Client ID.
         Highlights every matching row in the Treeview on success.
         """
-        cid   = self.entries["Client ID *"].get().strip()
+        # PEP 8 fix: remove extra alignment space before `=`
+        cid = self.entries["Client ID *"].get().strip()
         found = False
 
         for r in self.records:
@@ -505,31 +508,40 @@ class FlightWindow(tk.Toplevel):
             return
 
         values = self.tree.item(selected[0], "values")
-        orig_client_id  = int(values[0])
+        # PEP 8 fix: remove extra alignment spaces before `=`
+        orig_client_id = int(values[0])
         orig_airline_id = int(values[1])
-        orig_date       = str(values[2])
+        orig_date = str(values[2])
 
         # Locate the matching record in the in-memory list
         record_to_update = next(
             (r for r in self.records
              if r.get("Type") == "Flight"
-             and r.get("Client_ID")  == orig_client_id
+             and r.get("Client_ID") == orig_client_id
              and r.get("Airline_ID") == orig_airline_id
-             and str(r.get("Date"))  == orig_date),
+             and str(r.get("Date")) == orig_date),
             None
         )
         if not record_to_update:
             self.lift()
             self.focus_force()
-            messagebox.showerror("Error", "Could not find the record to update.", parent=self)
+            messagebox.showerror(
+                "Error", "Could not find the record to update.", parent=self
+            )
             return
 
         # Overwrite each field with the current entry values
-        record_to_update["Client_ID"]  = int(self.entries["Client ID *"].get())
-        record_to_update["Airline_ID"] = int(self.entries["Airline ID *"].get())
-        record_to_update["Date"]       = self.entries["Date (YYYY-MM-DD HH:MM) *"].get()
+        record_to_update["Client_ID"] = int(
+            self.entries["Client ID *"].get()
+        )
+        record_to_update["Airline_ID"] = int(
+            self.entries["Airline ID *"].get()
+        )
+        record_to_update["Date"] = self.entries[
+            "Date (YYYY-MM-DD HH:MM) *"
+        ].get()
         record_to_update["Start City"] = self.entries["Start City *"].get()
-        record_to_update["End City"]   = self.entries["End City *"].get()
+        record_to_update["End City"] = self.entries["End City *"].get()
 
         save_records(self.records)
         self.populate_treeview()
@@ -564,9 +576,10 @@ class FlightWindow(tk.Toplevel):
 
         for r in self.records:
             if (r.get("Type") == "Flight"
-                    and str(r.get("Client_ID"))  == str(values[0])
+                    # PEP 8 fix: remove extra alignment spaces
+                    and str(r.get("Client_ID")) == str(values[0])
                     and str(r.get("Airline_ID")) == str(values[1])
-                    and str(r.get("Date"))        == str(values[2])):
+                    and str(r.get("Date")) == str(values[2])):
                 self.records.remove(r)
                 deleted = True
                 break
@@ -596,7 +609,8 @@ class FlightWindow(tk.Toplevel):
         if not selected:
             return
         values = self.tree.item(selected[0], "values")
-        keys   = list(self.entries.keys())
+        # PEP 8 fix: remove extra alignment space before `=`
+        keys = list(self.entries.keys())
         # Map each Treeview column value to its corresponding entry widget
         for i, key in enumerate(keys):
             self.entries[key].delete(0, tk.END)
