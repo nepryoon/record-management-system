@@ -430,7 +430,7 @@ class ClientWindow(tk.Toplevel):
         self.entries["ID"].focus_set()
         self.status.config(text="✔ Form cleared. Ready")
 
-    def get_entry_values(self) -> dict:  # PEP 8 fix: add type annotations
+    def get_entry_values(self) -> dict[str, str]:  # PEP 8 fix: add type annotations
         """Return a dictionary of all field values, stripped of leading/trailing whitespace."""
         return {f: self.entries[f].get().strip() for f in self.fields}
 
@@ -448,7 +448,7 @@ class ClientWindow(tk.Toplevel):
             return bool(re.match(r"^[A-Za-z\s'-]+$", value))  # Letters and spaces only
         return True  # All other fields accept any non-empty string
 
-    def validate_entries(self, values: dict) -> tuple[bool, str | None]:  # PEP 8 fix
+    def validate_entries(self, values: dict[str, str]) -> tuple[bool, str | None]:  # PEP 8 fix
         """
         Validate all entry values.
 
