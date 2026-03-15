@@ -62,15 +62,16 @@ def open_main_window() -> None:
     header_frame = tk.Frame(root, bg="#2c3e50")
     header_frame.pack(fill="x")
 
-    tk.Label(
+    title_label = tk.Label(
         header_frame,
         text="TRAVEL RECORD MANAGEMENT SYSTEM",
-        font=("Arial", 16, "bold"),
+        font=("Arial", 13, "bold"),   # Reduced from 16 to 13 for tighter fit
         fg="white",
         bg="#2c3e50",
         wraplength=0,   # wraplength=0 disables wrapping; window width is fixed to content size
         justify="center"
-    ).pack(pady=(12, 4), fill="x", expand=True)
+    )
+    title_label.pack(pady=(12, 4), fill="x", expand=True)
 
     tk.Label(
         header_frame,
@@ -307,7 +308,7 @@ def open_main_window() -> None:
     # ----------------------------------------------------------
     help_btn = tk.Button(
         footer_frame, text="Help", width=12,
-        bg="#7f8c8d", fg="white",
+        bg="#5d6d7e", fg="white",  # WCAG AA fix: contrast 5.31:1 with white (was 3.48:1)
         font=("Arial", 10, "bold"),
         command=show_help
     )
@@ -315,7 +316,7 @@ def open_main_window() -> None:
 
     exit_btn = tk.Button(
         footer_frame, text="Exit", width=12,
-        bg="#e74c3c", fg="white",   # Red background to signal a destructive action
+        bg="#a93226", fg="white",   # WCAG AA fix: contrast 6.62:1 with white (was 3.82:1)
         font=("Arial", 10, "bold"),
         command=confirm_exit
     )
@@ -332,6 +333,9 @@ def open_main_window() -> None:
     # ----------------------------------------------------------
     root.update_idletasks()
     WIN_W = root.winfo_reqwidth()
+    # Constrain the title label to the usable header width so that the text
+    # always leaves SP (5 mm) of clear space on both the left and right sides.
+    title_label.config(wraplength=WIN_W - 2 * SP)
     WIN_H = root.winfo_reqheight()
 
     # Lock the window to its natural content size; prevent any resizing

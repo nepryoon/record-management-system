@@ -110,7 +110,10 @@ class FlightWindow(tk.Toplevel):
         # ----------------------------------------------------------
         self.style = ttk.Style()
         self.style.theme_use("clam")
-        self.style.map("Treeview", background=[("selected", "#3498db")])
+        self.style.map(
+            "Treeview",
+            background=[("selected", "#1f618d")],  # WCAG AA fix: 6.66:1 with white
+        )
         self.style.configure("Treeview", font=("Arial", 12))
         self.style.configure("Treeview.Heading", font=("Arial", 13, "bold"))
         self.style.configure(
@@ -237,7 +240,7 @@ class FlightWindow(tk.Toplevel):
         btn_frame.pack(fill="x", pady=12)
 
         buttons = [
-            ("Create", "#27ae60", self.create_flight),
+            ("Create", "#1a7a40", self.create_flight),  # WCAG AA fix: 5.38:1 with white
             ("Update", "#2980b9", self.update_flight),
             ("Delete", "#c0392b", self.delete_flight),
             ("Search", "#8e44ad", self.search_flight),
