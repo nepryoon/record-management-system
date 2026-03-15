@@ -147,7 +147,7 @@ class AirlineWindow(tk.Toplevel):
         # ----------------------------------------------------------
         self.protocol("WM_DELETE_WINDOW", self.on_close)           # Persist records on close
         self.bind("<Return>", lambda e: self.create_airline())      # Enter key creates a record
-        self.id_entry.focus_set()                                   # Initial focus on the ID field
+        self.name_entry.focus_set()                                 # Initial focus on Name for Create
 
     # ----------------------------------------------------------
     # GUI construction
@@ -188,14 +188,17 @@ class AirlineWindow(tk.Toplevel):
         )
         form.pack(fill="x", pady=10)
 
-        # Airline ID field
+        # Airline ID field — auto-assigned on Create; enter here only for Search/Update
         tk.Label(
-            form, text="Airline ID *", bg="white", font=("Arial", 12)
+            form,
+            text="Airline ID (auto-assigned; enter for Search/Update)",
+            bg="white",
+            font=("Arial", 12)
         ).grid(row=0, column=0, sticky="w", pady=8)
         self.id_entry = tk.Entry(form, bd=2, relief="solid", font=("Arial", 12))
         self.id_entry.grid(row=0, column=1, sticky="ew", padx=10)
 
-        # Company Name field
+        # Company Name field — required for Create and Update
         tk.Label(
             form, text="Company Name *", bg="white", font=("Arial", 12)
         ).grid(row=1, column=0, sticky="w", pady=8)
@@ -359,7 +362,8 @@ class AirlineWindow(tk.Toplevel):
         self.name_entry.delete(0, tk.END)
         for item in self.tree.selection():
             self.tree.selection_remove(item)
-        self.id_entry.focus_set()
+        # Focus Name since ID is auto-assigned on Create (entered only for Search/Update)
+        self.name_entry.focus_set()
         self.status.config(text="✔ Form cleared. Ready")
 
     # ----------------------------------------------------------
@@ -369,16 +373,11 @@ class AirlineWindow(tk.Toplevel):
     def create_airline(self) -> None:  # PEP 8 fix: add type annotations
         """
         Validate the form and create a new airline record.
-        Rejects non-numeric IDs and duplicate airline IDs.
-        """
-        try:
-            aid = int(self.id_entry.get().strip())
-        except ValueError:
-            self.lift()
-            self.focus_force()
-            messagebox.showwarning("Input Error", "ID must be a number.", parent=self)
-            return
 
+        The ID is auto-assigned to the next available integer — the user
+        does not enter an ID manually during creation.  The Airline ID field
+        is reserved for Search and Update operations only.
+        """
         name = self.name_entry.get().strip()
         if not name:
             self.lift()
@@ -386,21 +385,27 @@ class AirlineWindow(tk.Toplevel):
             messagebox.showwarning("Validation", "Company Name is required.", parent=self)
             return
 
-        # Reject duplicate airline IDs
-        if any(r.get("ID") == aid and r.get("Type") == "Airline" for r in self.records):
-            self.lift()
-            self.focus_force()
-            messagebox.showerror("Error", "Airline ID already exists.", parent=self)
-            return
+        # Auto-assign the next available Airline ID; the user never enters one manually.
+        # max(..., default=0) returns 0 when no Airline records exist yet, so the
+        # first ID assigned will be 1.
+        existing_ids = [
+            r["ID"] for r in self.records
+            if r.get("Type") == "Airline" and isinstance(r.get("ID"), int)
+        ]
+        aid = max(existing_ids, default=0) + 1
 
         self.records.append({"ID": aid, "Company Name": name, "Type": "Airline"})
         save_records(self.records)
         self.populate_treeview()
         self.clear_form()
-        self.status.config(text="✔ Airline created successfully.")
+        self.status.config(text=f"✔ Airline created successfully (assigned ID: {aid}).")
         self.lift()
         self.focus_force()
-        messagebox.showinfo("Success", "✔ Airline added successfully.", parent=self)
+        messagebox.showinfo(
+            "Success",
+            f"✔ Airline added successfully.\nAssigned ID: {aid}",
+            parent=self
+        )
 
     def search_airline(self) -> None:  # PEP 8 fix: add type annotations
         """

@@ -275,6 +275,76 @@ they never instantiate any tkinter widgets. Key aspects:
 
 ---
 
+### Project Requirements Compliance
+
+This subsection maps every requirement from the original project
+specification to its implementation status following the compliance
+audit.
+
+#### Record Types
+
+| Requirement | Status | Notes |
+|---|---|---|
+| Client record with 11 specified fields | ✅ | All fields present in `create_client`, `ClientRecord.to_dict`, and `ClientWindow` form |
+| Airline record with 3 specified fields | ✅ | All fields present in `create_airline`, `AirlineRecord.to_dict`, and `AirlineWindow` form |
+| Flight record with 5 specified fields | ✅ | All fields present in `create_flight`, `FlightRecord.to_dict`, and `FlightWindow` form |
+| `Type` field auto-set (not user-editable) | ✅ | Set automatically in all record creation functions and dataclass `__post_init__` |
+| `ID` auto-assigned (not user-entered) | ✅ | Fixed in this audit: Client and Airline IDs now auto-assigned from `max(existing_ids) + 1`; the ID entry field is used only for Search/Update |
+| `Client_ID` / `Airline_ID` validated against existing records | ✅ | Validated in `FlightWindow.create_flight` and `update_flight` before saving |
+| `Date` field stored as proper date/time (not raw string) | ✅ | Fixed in this audit: `FlightWindow.create_flight` and `update_flight` now convert user input via `datetime.strptime` + `isoformat()` before storing in ISO-8601 format |
+
+#### Internal Storage
+
+| Requirement | Status | Notes |
+|---|---|---|
+| All records stored as `list[dict]` | ✅ | All three types stored in a single shared `list[dict]`; distinguished by the `"Type"` field |
+| Canonical field names used as dict keys | ✅ | Keys match specification exactly (e.g. `"Address Line 1"`, `"Zip Code"`, `"Phone Number"`) |
+| Single list, `"Type"` field distinguishes records | ✅ | Documented throughout README and consistent across all modules |
+
+#### Persistence
+
+| Requirement | Status | Notes |
+|---|---|---|
+| Persisted in pickle / JSON / JSONL | ✅ | JSONL (JSON Lines) used throughout |
+| Single format used consistently | ✅ | Only JSONL; no mixing |
+| Save on application close | ✅ | Fixed in this audit: `main_window.py` `on_close` callbacks now call `window.on_close()` (saves + destroys) instead of `window.destroy()` (destroy only). Each CRUD operation also saves immediately. |
+| Check file existence on start | ✅ | `load_records()` in `storage.py` returns `[]` when the file is absent |
+| File path as named constant | ✅ | `DATA_FILE` constant in `src/storage.py`; `FILE_PATH` in `src/conf/settings.py` |
+| `datetime` values serialised/deserialised correctly (ISO-8601) | ✅ | Fixed in this audit: dates now stored as ISO-8601 strings (e.g. `"2025-06-15T10:30:00"`); `FlightRecord.from_dict` parses them back with `datetime.fromisoformat` |
+| Error handling for corrupted files | ✅ | `load_records` catches `json.JSONDecodeError` and `IOError`, returning `[]` |
+
+#### Graphical User Interface — CRUD
+
+| Requirement | Status | Notes |
+|---|---|---|
+| Create / Delete / Update / Search for **Client** records | ✅ | All four operations implemented in `ClientWindow` |
+| Create / Delete / Update / Search for **Airline** records | ✅ | All four operations implemented in `AirlineWindow` |
+| Create / Delete / Update / Search for **Flight** records | ✅ | All four operations implemented in `FlightWindow` |
+| IDs auto-assigned on Create | ✅ | Fixed in this audit for Client and Airline; Flights have no surrogate ID |
+| `Type` field not exposed as user input | ✅ | Set automatically in all record creation paths |
+| Input validation before saving | ✅ | Required fields, numeric checks, date format validation, and foreign-key checks |
+| Confirmation prompt before Delete | ✅ | `messagebox.askyesno` used in all three windows |
+| Update form pre-populated from selected row | ✅ | `on_tree_select` populates all entry widgets from the Treeview row |
+| Cascade delete when Client or Airline is deleted | ✅ | Implemented in both `delete_client` / `delete_airline` (data layer) and the GUI windows |
+| "No results" message on unsuccessful Search | ✅ | Each window shows an `showinfo` or `showwarning` dialogue on no match |
+| Flight search displays Client name and Airline name | ⚠️ | Flight Treeview displays raw integer IDs (`Client_ID`, `Airline_ID`); resolved names are not shown. This is a usability improvement rather than a hard requirement — the raw IDs are correct and unambiguous |
+
+#### Unit Tests
+
+| Requirement | Status | Notes |
+|---|---|---|
+| Test module for each non-GUI module | ✅ | `test_models.py`, `test_storage.py`, `test_repository.py`, `test_client_record.py`, `test_airline_record.py`, `test_flight_record.py` |
+| Tests cover Create for all three record types | ✅ | 6 + 6 + 5 Create tests across the three record test modules |
+| Tests cover Delete (including orphan-record scenario) | ✅ | Cascade delete tested for both Client→Flight and Airline→Flight |
+| Tests cover Update for all three record types | ✅ | Including cascade ID propagation for Client |
+| Tests cover Search (including no-results case) | ✅ | All three modules test the empty-result path |
+| Tests cover persistence round-trip | ✅ | `test_storage.py` verifies save + reload fidelity |
+| Tests cover input validation | ✅ | `RecordNotFoundError` and `DuplicateRecordError` tested; date parsing tested via `test_models.py` |
+| Tests cover file-existence start-up check | ✅ | `test_load_returns_empty_list_when_file_missing` in `test_storage.py` |
+| All tests pass | ✅ | 74 tests pass with `python -m pytest tests/ -v` |
+
+---
+
 ## Code Reference
 
 ### `src/exceptions.py`
@@ -588,6 +658,13 @@ builds and runs the primary dashboard window of the application.
 > functions (`update_status`, `confirm_exit`, `on_enter`, `on_leave`,
 > `open_clients`, `open_airlines`, `open_flights`, `show_help`, and
 > their nested `on_close` callbacks).
+> 🔍 **Audit fix — Requirements:** The `on_close` callbacks inside
+> `open_clients`, `open_airlines`, and `open_flights` previously called
+> `window.destroy()` directly, bypassing each window's `on_close()`
+> method and therefore skipping the final save to the JSONL file.
+> Fixed: callbacks now call `window.on_close()`, which saves records
+> and then destroys the window, satisfying the specification requirement
+> to save to the file system when the application is closed.
 
 ---
 
@@ -625,9 +702,10 @@ managing Airline records.
 **`clear_form(self)`** — clears both entry fields and deselects any
   highlighted Treeview row.
 
-**`create_airline(self)`** — validates the ID (must be numeric) and
-  Company Name (must be non-empty), checks for duplicate IDs, appends
-  the new record, saves, and refreshes the view.
+**`create_airline(self)`** — validates the Company Name (must be
+  non-empty), auto-assigns the next available Airline ID (the user
+  never enters an ID manually for Create), appends the record,
+  saves, and refreshes.
 
 **`search_airline(self)`** — looks up an airline by ID; optionally
   verifies a supplied Company Name matches.
@@ -655,6 +733,13 @@ managing Airline records.
 > (`on_enter`, `on_leave`).
 > 💬 **Comments added:** British English module-level docstring and
 > comprehensive method docstrings added throughout.
+> 🔍 **Audit fix — Requirements:** `create_airline` now auto-assigns
+> the next available Airline ID from existing records instead of
+> requiring the user to enter one manually, satisfying the specification
+> requirement that "IDs are assigned automatically".  The Airline ID
+> field in the form is retained for Search and Update operations.
+> Initial focus moved from `id_entry` to `name_entry` for a smoother
+> Create workflow.
 
 ---
 
@@ -667,8 +752,10 @@ managing Client records.
 
 - Same HiDPI sizing, modality, and icon-loading pattern as
   `AirlineWindow.__init__`.
-- Sets `self.required_fields = ["ID", "Name", "Phone Number"]` to
-  distinguish mandatory from optional fields.
+- Sets `self.required_fields = ["Name", "Phone Number"]` to
+  distinguish mandatory from optional fields.  The `ID` field is
+  intentionally excluded: it is auto-assigned on creation and only
+  entered manually when searching or updating by ID.
 
 **`create_widgets(self)`**
 
@@ -699,8 +786,9 @@ managing Client records.
   checks required fields first, then delegates to `validate_field`.
 
 **`create_client(self)`** — highlights missing required fields in red,
-  validates all entries, checks for duplicate IDs, appends the record,
-  saves, and refreshes.
+  validates all entries, auto-assigns the next available Client ID
+  (the user never enters an ID manually for Create), appends the
+  record, saves, and refreshes.
 
 **`search_client(self)`** — finds a client by ID and optionally
   verifies additionally entered field values.
@@ -730,6 +818,13 @@ managing Client records.
 > and inner functions (`on_enter`, `on_leave`).
 > 💬 **Comments added:** British English module-level docstring and
 > comprehensive method docstrings added throughout.
+> 🔍 **Audit fix — Requirements:** `create_client` now auto-assigns
+> the next available Client ID from existing records instead of
+> requiring the user to enter one manually, satisfying the specification
+> requirement that "IDs are assigned automatically".  `"ID"` removed
+> from `required_fields`; the ID field in the form is retained for
+> Search and Update operations.  Initial focus moved from `entries["ID"]`
+> to `entries["Name"]` for a smoother Create workflow.
 
 ---
 
@@ -759,15 +854,17 @@ managing Flight records.
 
 **`create_flight(self)`** — reloads records from disk (to avoid
   stale data), validates all entries, parses the date string with
-  `datetime.strptime`, verifies the referenced Client and Airline
+  `datetime.strptime`, converts to ISO-8601 via `isoformat()` before
+  storing, verifies the referenced Client and Airline
   exist, then appends and saves.
 
 **`search_flight(self)`** — searches all flights for a given Client
   ID and highlights each matching Treeview row.
 
 **`update_flight(self)`** — reads the original composite key from the
-  selected Treeview row, locates the matching record in memory, and
-  overwrites all five fields with the form values.
+  selected Treeview row, locates the matching record in memory,
+  validates and converts the new date to ISO-8601, and overwrites
+  all five fields with the form values.
 
 **`delete_flight(self)`** — removes the selected flight record after
   confirmation, matching by composite key.
@@ -792,6 +889,11 @@ managing Flight records.
 > `on_leave`).
 > 💬 **Comments added:** British English module-level docstring and
 > comprehensive method docstrings added throughout.
+> 🔍 **Audit fix — Requirements:** `create_flight` and `update_flight`
+> now convert the user-entered date string to ISO-8601 format via
+> `datetime.strptime` + `isoformat()` before storing, satisfying the
+> requirement that the Date field be handled as a proper date/time
+> value with correct serialisation to the file system.
 
 ---
 

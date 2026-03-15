@@ -218,8 +218,10 @@ def open_main_window() -> None:
         client_window = ClientWindow(root)
 
         def on_close() -> None:  # PEP 8 fix: add type annotations
+            # Call the window's own on_close() to save records before destroying,
+            # satisfying the spec's requirement to save on application close.
             update_status("System Ready")
-            client_window.destroy()
+            client_window.on_close()
 
         client_window.protocol("WM_DELETE_WINDOW", on_close)
 
@@ -229,8 +231,10 @@ def open_main_window() -> None:
         airline_window = AirlineWindow(root)
 
         def on_close() -> None:  # PEP 8 fix: add type annotations
+            # Call the window's own on_close() to save records before destroying,
+            # satisfying the spec's requirement to save on application close.
             update_status("System Ready")
-            airline_window.destroy()
+            airline_window.on_close()
 
         airline_window.protocol("WM_DELETE_WINDOW", on_close)
 
@@ -240,8 +244,10 @@ def open_main_window() -> None:
         flight_window = FlightWindow(root)
 
         def on_close() -> None:  # PEP 8 fix: add type annotations
+            # Call the window's own on_close() to save records before destroying,
+            # satisfying the spec's requirement to save on application close.
             update_status("System Ready")
-            flight_window.destroy()
+            flight_window.on_close()
 
         flight_window.protocol("WM_DELETE_WINDOW", on_close)
 

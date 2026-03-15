@@ -403,6 +403,11 @@ class FlightWindow(tk.Toplevel):
     def create_flight(self) -> None:  # PEP 8 fix: add type annotations
         """
         Validate the form and create a new flight record.
+
+        The Date field is parsed from the user-entered ``YYYY-MM-DD HH:MM``
+        format and stored as a canonical ISO-8601 string (e.g.
+        ``"2025-06-15T10:30:00"``), ensuring correct deserialisation when
+        the application reloads from the JSONL file.
         Verifies that the referenced Client ID and Airline ID already
         exist in the data store before saving.
         """
@@ -423,9 +428,11 @@ class FlightWindow(tk.Toplevel):
             messagebox.showwarning("Validation", "All fields must be filled.", parent=self)
             return
 
-        # Validate the date string against the expected format
+        # Validate the date string against the expected format and convert
+        # to ISO-8601 for consistent storage (avoids ambiguous raw strings)
         try:
-            datetime.strptime(date, "%Y-%m-%d %H:%M")
+            parsed_date = datetime.strptime(date, "%Y-%m-%d %H:%M")
+            date_iso = parsed_date.isoformat()  # e.g. "2025-06-15T10:30:00"
         except ValueError:
             self.lift()
             self.focus_force()
@@ -456,7 +463,7 @@ class FlightWindow(tk.Toplevel):
         self.records.append({
             "Client_ID": int(client_id),
             "Airline_ID": int(airline_id),
-            "Date": date,
+            "Date": date_iso,  # Stored as ISO-8601 for correct round-trip deserialisation
             "Start City": start,
             "End City": end,
             "Type": "Flight"
@@ -507,6 +514,9 @@ class FlightWindow(tk.Toplevel):
     def update_flight(self) -> None:  # PEP 8 fix: add type annotations
         """
         Update the currently selected flight record with values from the form.
+
+        The Date field is parsed and converted to ISO-8601 format before being
+        stored, ensuring consistency with records created via ``create_flight``.
         The record is matched by the original Client ID, Airline ID, and Date
         read from the selected Treeview row.
         """
@@ -540,6 +550,16 @@ class FlightWindow(tk.Toplevel):
             )
             return
 
+        # Validate and convert the new date entry to ISO-8601 format
+        new_date_str = self.entries["Date (YYYY-MM-DD HH:MM) *"].get().strip()
+        try:
+            new_date_iso = datetime.strptime(new_date_str, "%Y-%m-%d %H:%M").isoformat()
+        except ValueError:
+            self.lift()
+            self.focus_force()
+            messagebox.showwarning("Date Error", "Use format: YYYY-MM-DD HH:MM", parent=self)
+            return
+
         # Overwrite each field with the current entry values
         record_to_update["Client_ID"] = int(
             self.entries["Client ID *"].get()
@@ -547,9 +567,7 @@ class FlightWindow(tk.Toplevel):
         record_to_update["Airline_ID"] = int(
             self.entries["Airline ID *"].get()
         )
-        record_to_update["Date"] = self.entries[
-            "Date (YYYY-MM-DD HH:MM) *"
-        ].get()
+        record_to_update["Date"] = new_date_iso  # Stored as ISO-8601
         record_to_update["Start City"] = self.entries["Start City *"].get()
         record_to_update["End City"] = self.entries["End City *"].get()
 
