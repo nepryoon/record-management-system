@@ -99,9 +99,11 @@ class ClientWindow(tk.Toplevel):
         self.records = load_records() or []
 
         # ----------------------------------------------------------
-        # Fields that must not be empty when creating or updating a record
+        # Fields that must not be empty when creating or updating a record.
+        # "ID" is intentionally excluded: it is auto-assigned on creation
+        # and only entered manually when searching or updating by ID.
         # ----------------------------------------------------------
-        self.required_fields = ["ID", "Name", "Phone Number"]
+        self.required_fields = ["Name", "Phone Number"]
 
         # ----------------------------------------------------------
         # ttk Style configuration
@@ -152,9 +154,9 @@ class ClientWindow(tk.Toplevel):
         # ----------------------------------------------------------
         # Event bindings
         # ----------------------------------------------------------
-        self.protocol("WM_DELETE_WINDOW", self.on_close)          # Save on close
+        self.protocol("WM_DELETE_WINDOW", self.on_close)           # Save on close
         self.bind("<Return>", lambda event: self.create_client())  # Enter key creates a record
-        self.entries["ID"].focus_set()                            # Initial focus on the ID field
+        self.entries["Name"].focus_set()                          # Initial focus on Name for Create
 
     # ----------------------------------------------------------
     # GUI construction
@@ -214,8 +216,15 @@ class ClientWindow(tk.Toplevel):
         for i, field in enumerate(self.fields):
             row = i // 2
             col = (i % 2) * 2
-            # Append an asterisk to required field labels
-            label_text = field + " *" if field in self.required_fields else field
+            # Append an asterisk to required field labels; the ID field
+            # gets a note because it is auto-assigned during Create and
+            # only entered manually for Search and Update.
+            if field == "ID":
+                label_text = "ID (auto-assigned; enter for Search/Update)"
+            elif field in self.required_fields:
+                label_text = field + " *"
+            else:
+                label_text = field
             tk.Label(
                 form,
                 text=label_text,
@@ -427,7 +436,8 @@ class ClientWindow(tk.Toplevel):
             entry.config(highlightthickness=0)
         for item in self.tree.selection():
             self.tree.selection_remove(item)
-        self.entries["ID"].focus_set()
+        # Focus Name since ID is auto-assigned on Create (entered only for Search/Update)
+        self.entries["Name"].focus_set()
         self.status.config(text="✔ Form cleared. Ready")
 
     def get_entry_values(self) -> dict[str, str]:  # PEP 8 fix: add type annotations
@@ -470,6 +480,10 @@ class ClientWindow(tk.Toplevel):
     def create_client(self) -> None:  # PEP 8 fix: add type annotations
         """
         Validate the form and create a new client record.
+
+        The ID is auto-assigned to the next available integer — the user
+        does not enter an ID manually during creation.  The ID field in the
+        form is reserved for Search and Update operations only.
         Highlights any missing required fields in red before saving.
         """
         missing = []
@@ -501,18 +515,14 @@ class ClientWindow(tk.Toplevel):
             self.status.config(text=f"Validation failed: '{invalid_field}' invalid/missing.")
             return
 
-        cid = self.get_client_id()
-        if cid is None:
-            self.status.config(text="Invalid ID. Client not created.")
-            return
-
-        # Reject duplicate IDs
-        if any(r.get("Type") == "Client" and str(r.get("ID")) == str(cid) for r in self.records):
-            self.lift()
-            self.focus_force()
-            messagebox.showerror("Error", "Client ID already exists.", parent=self)
-            self.status.config(text="Duplicate ID. Client not created.")
-            return
+        # Auto-assign the next available Client ID; the user never enters one manually.
+        # max(..., default=0) returns 0 when no Client records exist yet, so the
+        # first ID assigned will be 1.
+        existing_ids = [
+            r["ID"] for r in self.records
+            if r.get("Type") == "Client" and isinstance(r.get("ID"), int)
+        ]
+        cid = max(existing_ids, default=0) + 1
 
         # PEP 8 fix: remove extra alignment spaces before `=`
         values["ID"] = cid
@@ -521,10 +531,14 @@ class ClientWindow(tk.Toplevel):
         save_records(self.records)
         self.populate_treeview()
         self.clear_form()
-        self.status.config(text="✔ Client added successfully.")
+        self.status.config(text=f"✔ Client added successfully (assigned ID: {cid}).")
         self.lift()
         self.focus_force()
-        messagebox.showinfo("Success", "✔ Client record added successfully.", parent=self)
+        messagebox.showinfo(
+            "Success",
+            f"✔ Client record added successfully.\nAssigned ID: {cid}",
+            parent=self
+        )
 
     def search_client(self) -> None:  # PEP 8 fix: add type annotations
         """
