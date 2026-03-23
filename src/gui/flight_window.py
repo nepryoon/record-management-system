@@ -22,6 +22,43 @@ from src.record.flight_record import (
 from src.repository import RecordRepository
 
 
+# ---------------------------------------------------------------------------
+# Date formatting helpers
+# ---------------------------------------------------------------------------
+
+def _fmt_date(raw: str) -> str:
+    """Convert a stored ISO-8601 date string to the display format YYYY-MM-DD HH:MM.
+
+    Handles the variants that may be present in the JSONL file:
+    ``2026-02-22T13:33:00``, ``2026-02-22T13:33``,
+    ``2026-02-22 13:33:00``, ``2026-02-22 13:33``.
+    Falls back to the raw value if none of the patterns match.
+    """
+    for fmt in (
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+    ):
+        try:
+            return datetime.strptime(raw, fmt).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            continue
+    return raw  # fallback: return the raw string unchanged
+
+
+def _display_to_iso(display: str) -> str:
+    """Convert a display-format date string (``YYYY-MM-DD HH:MM``) to ISO-8601.
+
+    Returns the original string unchanged if parsing fails, so that values
+    already stored in ISO-8601 format pass through without error.
+    """
+    try:
+        return datetime.strptime(display, "%Y-%m-%d %H:%M").isoformat()
+    except ValueError:
+        return display  # already ISO or unparseable — pass through
+
+
 class FlightWindow(tk.Toplevel):
     """
     Flight Record Management Window.
@@ -42,58 +79,36 @@ class FlightWindow(tk.Toplevel):
 
         # ----------------------------------------------------------
         # HiDPI / scaling-aware window sizing
-        #
-        # On HiDPI displays (e.g. Wayland fractional scaling) tkinter
-        # reports a scaling factor greater than the standard baseline of
-        # 96 DPI / 72 pt = 1.333. The compositor then scales the window
-        # back down, making it appear smaller than intended.
-        #
-        # To compensate, the target dimensions are multiplied by the
-        # ratio between the actual scaling and the baseline, so that
-        # the compositor scales the window back to the intended visual size.
-        #
-        # The window is then centred on whichever monitor the mouse
-        # cursor currently resides on, calculated from the pointer
-        # x-coordinate and the estimated per-monitor width.
         # ----------------------------------------------------------
-        BASE_SCALING = 96.0 / 72.0  # Standard tkinter baseline scaling factor
+        BASE_SCALING = 96.0 / 72.0
         actual_scaling = float(self.tk.call("tk", "scaling"))
-        ratio = actual_scaling / BASE_SCALING  # HiDPI multiplier (1.0 on normal displays)
+        ratio = actual_scaling / BASE_SCALING
 
-        # Total virtual desktop dimensions (spanning all connected monitors)
         phys_w = self.winfo_screenwidth()
         phys_h = self.winfo_screenheight()
 
-        # Estimate the number of monitors from the virtual desktop aspect ratio
-        # (e.g. 6912 / 2160 ≈ 3 monitors arranged side by side)
         monitors = max(1, round(phys_w / phys_h))
-        mon_w = phys_w // monitors  # Approximate width of a single monitor in pixels
+        mon_w = phys_w // monitors
 
-        # Target visual size in device-independent pixels
         TARGET_W, TARGET_H = 1300, 820
 
-        # Scale up to compensate for HiDPI; clamp to monitor bounds
         WIN_W = min(int(TARGET_W * ratio), mon_w - 40)
         WIN_H = min(int(TARGET_H * ratio), phys_h - 80)
 
         self.resizable(True, True)
         self.minsize(WIN_W, WIN_H)
 
-        # Force tkinter to calculate widget sizes before reading pointer position
         self.update_idletasks()
 
-        # Centre on the monitor where the mouse cursor currently resides
         ptr_x = self.winfo_pointerx()
-        mon_index = min(ptr_x // mon_w, monitors - 1)  # Zero-based monitor index
-        mon_origin_x = mon_index * mon_w                # Left edge of the active monitor
-        x = mon_origin_x + (mon_w - WIN_W) // 2        # Horizontal centre
-        y = (phys_h - WIN_H) // 2                      # Vertical centre
+        mon_index = min(ptr_x // mon_w, monitors - 1)
+        mon_origin_x = mon_index * mon_w
+        x = mon_origin_x + (mon_w - WIN_W) // 2
+        y = (phys_h - WIN_H) // 2
         self.geometry(f"{WIN_W}x{WIN_H}+{x}+{y}")
 
         # ----------------------------------------------------------
         # Focus and modality
-        # transient() keeps this window above the master at all times;
-        # grab_set() makes it modal (blocks interaction with the master).
         # ----------------------------------------------------------
         self.transient(master)
         self.lift()
@@ -108,26 +123,18 @@ class FlightWindow(tk.Toplevel):
         self.repo.load()
         self.records = self.repo.records
 
-        # Dictionary tracking the current sort direction for each column.
-        # True = descending, False = ascending (default on first click).
         self._sort_reverse: dict[str, bool] = {}
-
-        # Column currently used as the sort key (None = unsorted).
         self._sort_col: str | None = None
-
-        # Original heading labels — populated in create_widgets() so they can
-        # be restored cleanly when the indicator moves to a different column.
         self._col_headings: dict[str, str] = {}
 
         # ----------------------------------------------------------
         # ttk Style configuration
-        # Applied to the Treeview table and its scrollbars
         # ----------------------------------------------------------
         self.style = ttk.Style()
         self.style.theme_use("clam")
         self.style.map(
             "Treeview",
-            background=[("selected", "#1f618d")],  # WCAG AA: 6.66:1
+            background=[("selected", "#1f618d")],
         )
         self.style.configure("Treeview", font=("Arial", 12))
         self.style.configure("Treeview.Heading", font=("Arial", 13, "bold"))
@@ -138,7 +145,7 @@ class FlightWindow(tk.Toplevel):
             troughcolor="#ecf0f1",
             bordercolor="#ecf0f1",
             arrowcolor="white",
-            width=22  # Wider than the default for easier grabbing
+            width=22,
         )
         self.style.configure(
             "Horizontal.TScrollbar",
@@ -147,23 +154,22 @@ class FlightWindow(tk.Toplevel):
             troughcolor="#ecf0f1",
             bordercolor="#ecf0f1",
             arrowcolor="white",
-            width=18
+            width=18,
         )
 
         # ----------------------------------------------------------
-        # Load the flight icon for the header.
-        # Falls back gracefully if the asset file is not found.
+        # Flight icon — graceful fallback if asset is missing
         # ----------------------------------------------------------
         assets = os.path.join(os.path.dirname(__file__), "assets")
         try:
             self.flight_icon = tk.PhotoImage(
                 file=os.path.join(assets, "flight.png")
-            ).subsample(3, 4)  # Reduce icon to roughly one-quarter of its original size
+            ).subsample(3, 4)
         except Exception:
             self.flight_icon = None
 
         # ----------------------------------------------------------
-        # Build all GUI widgets and populate the Treeview with existing records
+        # Build GUI and populate the Treeview
         # ----------------------------------------------------------
         self.create_widgets()
         self.populate_treeview()
@@ -171,9 +177,9 @@ class FlightWindow(tk.Toplevel):
         # ----------------------------------------------------------
         # Event bindings
         # ----------------------------------------------------------
-        self.protocol("WM_DELETE_WINDOW", self.on_close)              # Persist records on close
-        self.bind("<Return>", lambda e: self.create_flight())          # Enter key creates a record
-        self.entries["Client ID *"].focus_set()                        # Initial focus on Client ID
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.bind("<Return>", lambda e: self.create_flight())
+        self.entries["Client ID *"].focus_set()
 
     # ----------------------------------------------------------
     # GUI construction
@@ -182,7 +188,6 @@ class FlightWindow(tk.Toplevel):
     def create_widgets(self) -> None:
         """Create and lay out all GUI widgets within the window."""
 
-        # Header bar — dark background with centred title and icon
         header = tk.Frame(self, bg="#2c3e50", pady=15)
         header.pack(fill="x")
         tk.Label(
@@ -192,60 +197,47 @@ class FlightWindow(tk.Toplevel):
             image=self.flight_icon,
             compound="left",
             fg="white",
-            bg="#2c3e50"
+            bg="#2c3e50",
         ).pack()
 
-        # ----------------------------------------------------------
-        # Main container — holds the form, buttons, and table
-        # ----------------------------------------------------------
         main = tk.Frame(self, bg="#f4f6f7", padx=20, pady=10)
         main.pack(fill="both", expand=True)
 
-        # ----------------------------------------------------------
-        # Input form — labelled frame containing all flight fields
-        # ----------------------------------------------------------
         form = tk.LabelFrame(
             main,
             text="Flight Information",
             font=("Arial", 11, "bold"),
             bg="white",
             padx=20,
-            pady=20
+            pady=20,
         )
         form.pack(fill="x", pady=10)
 
-        # Field labels displayed in the form; all are mandatory for a flight record
         labels = [
             "Client ID *",
             "Airline ID *",
             "Date (YYYY-MM-DD HH:MM) *",
             "Start City *",
-            "End City *"
+            "End City *",
         ]
         self.entries = {}
 
-        # Lay out each field on its own row
         for i, text in enumerate(labels):
-            tk.Label(
-                form,
-                text=text,
-                bg="white",
-                font=("Arial", 12)
-            ).grid(row=i, column=0, sticky="w", pady=10)
+            tk.Label(form, text=text, bg="white", font=("Arial", 12)).grid(
+                row=i, column=0, sticky="w", pady=10
+            )
             entry = tk.Entry(form, font=("Arial", 12), bd=2, relief="solid")
             entry.grid(row=i, column=1, padx=10, sticky="ew")
             self.entries[text] = entry
 
-        # Allow the entry column to expand when the window is resized
         form.columnconfigure(1, weight=1)
 
-        # Required fields note below the last form entry
         tk.Label(
             form,
             text="* Required fields",
             font=("Arial", 11, "italic"),
-            fg="#e74c3c",  # Red to indicate mandatory fields
-            bg="white"
+            fg="#e74c3c",
+            bg="white",
         ).grid(row=len(labels), column=0, columnspan=2, sticky="w", pady=(0, 5))
 
         # ----------------------------------------------------------
@@ -255,7 +247,7 @@ class FlightWindow(tk.Toplevel):
         btn_frame.pack(fill="x", pady=12)
 
         buttons = [
-            ("Create", "#1a7a40", self.create_flight),  # WCAG AA: 5.38:1
+            ("Create", "#1a7a40", self.create_flight),
             ("Update", "#2980b9", self.update_flight),
             ("Delete", "#c0392b", self.delete_flight),
             ("Search", "#8e44ad", self.search_flight),
@@ -263,12 +255,10 @@ class FlightWindow(tk.Toplevel):
         ]
 
         def on_enter(e: tk.Event) -> None:
-            """Darken button on mouse-over."""
-            e.widget['bg'] = '#34495e'
+            e.widget["bg"] = "#34495e"
 
         def on_leave(e: tk.Event, color: str) -> None:
-            """Restore original button colour when cursor leaves."""
-            e.widget['bg'] = color
+            e.widget["bg"] = color
 
         for i, (text, color, cmd) in enumerate(buttons):
             btn = tk.Button(
@@ -278,7 +268,7 @@ class FlightWindow(tk.Toplevel):
                 fg="white",
                 width=14,
                 font=("Arial", 12, "bold"),
-                command=cmd
+                command=cmd,
             )
             btn.grid(row=0, column=i, padx=5, sticky="ew")
             btn.bind("<Enter>", on_enter)
@@ -286,7 +276,7 @@ class FlightWindow(tk.Toplevel):
             btn_frame.columnconfigure(i, weight=1)
 
         # ----------------------------------------------------------
-        # Treeview record table with vertical and horizontal scrollbars
+        # Treeview with scrollbars
         # ----------------------------------------------------------
         table_frame = tk.Frame(main, bg="white")
         table_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
@@ -294,72 +284,48 @@ class FlightWindow(tk.Toplevel):
         columns = ("CLIENT ID", "AIRLINE ID", "DATE", "START CITY", "END CITY")
         col_widths = {
             "CLIENT ID": 100, "AIRLINE ID": 100, "DATE": 200,
-            "START CITY": 180, "END CITY": 180
+            "START CITY": 180, "END CITY": 180,
         }
 
         self.tree = ttk.Treeview(
-            table_frame,
-            columns=columns,
-            show="headings",  # Hide the default empty first column
-            height=12
+            table_frame, columns=columns, show="headings", height=12
         )
 
-        # Alternating row colours for readability
-        self.tree.tag_configure('oddrow',  background='white')
-        self.tree.tag_configure('evenrow', background='#f2f2f2')
+        self.tree.tag_configure("oddrow",  background="white")
+        self.tree.tag_configure("evenrow", background="#f2f2f2")
 
         for col in columns:
-            self._col_headings[col] = col  # Store original label for indicator restoration
-            self.tree.heading(
-                col, text=col,
-                command=lambda c=col: self._sort_column(c)  # Click header to sort
-            )
+            self._col_headings[col] = col
+            self.tree.heading(col, text=col, command=lambda c=col: self._sort_column(c))
             self.tree.column(
-                col,
-                anchor="center",
-                width=col_widths[col],
-                minwidth=col_widths[col]
+                col, anchor="center", width=col_widths[col], minwidth=col_widths[col]
             )
 
-        # Horizontal scrollbar — packed before the tree so it appears below
         xscroll = ttk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
         self.tree.configure(xscrollcommand=xscroll.set)
         xscroll.pack(side="bottom", fill="x")
 
-        # Vertical scrollbar — packed before the tree so it appears to the right
         yscroll = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=yscroll.set)
         yscroll.pack(side="right", fill="y")
 
         self.tree.pack(fill="both", expand=True)
-
-        # Populate the form when the user clicks a row in the table
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
 
-        # Empty-state label shown when no records exist
         self.empty_label = tk.Label(
             table_frame,
             text="No flights registered yet",
             font=("Arial", 15, "italic"),
             bg="white",
-            fg="#555555"
+            fg="#555555",
         )
         self.empty_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        # ----------------------------------------------------------
-        # Total record counter displayed below the table
-        # ----------------------------------------------------------
         self.counter = tk.Label(
-            main,
-            text="",
-            bg="#f4f6f7",
-            font=("Arial", 12, "bold")
+            main, text="", bg="#f4f6f7", font=("Arial", 12, "bold")
         )
         self.counter.pack(anchor="e", padx=5)
 
-        # ----------------------------------------------------------
-        # Status bar at the bottom of the window
-        # ----------------------------------------------------------
         self.status = tk.Label(
             self,
             text="System Ready",
@@ -367,7 +333,7 @@ class FlightWindow(tk.Toplevel):
             relief="sunken",
             anchor="w",
             bg="#ecf0f1",
-            font=("Arial", 12)
+            font=("Arial", 12),
         )
         self.status.pack(fill="x", side="bottom")
 
@@ -376,66 +342,35 @@ class FlightWindow(tk.Toplevel):
     # ----------------------------------------------------------
 
     def _sort_column(self, col: str) -> None:
-        """Sort the Treeview table by the specified column.
-
-        Toggles between ascending and descending order on each successive
-        click of the same column header. Numeric columns (ID and any integer
-        foreign-key fields) are sorted as integers to preserve correct
-        numeric order; all other columns are sorted case-insensitively as
-        strings.
-
-        Parameters:
-            col: The internal column identifier string as used in the
-                 Treeview column definitions.
-        """
-        # Toggle the sort direction for this column; default to ascending
-        # on the first click (i.e. when the column has not been sorted before)
+        """Sort the Treeview by *col*, toggling direction on repeated clicks."""
         reverse = self._sort_reverse.get(col, False)
         self._sort_reverse[col] = not reverse
 
-        # Remove the sort indicator from the previously sorted column
         if self._sort_col and self._sort_col != col:
-            self.tree.heading(
-                self._sort_col,
-                text=self._col_headings[self._sort_col]
-            )
+            self.tree.heading(self._sort_col, text=self._col_headings[self._sort_col])
 
-        # Update the active column heading with ▲ (ascending) or ▼ (descending).
-        # `reverse` holds the *previous* direction; after the toggle above,
-        # the actual sort below uses the old value so the displayed indicator
-        # must match: ascending (reverse=False → sort asc) → ▲, descending → ▼.
         indicator = "▲" if not reverse else "▼"
         self.tree.heading(col, text=f"{self._col_headings[col]} {indicator}")
         self._sort_col = col
 
-        # Retrieve all items currently displayed in the Treeview
         items = self.tree.get_children("")
-
-        # Determine the index of this column in the Treeview column tuple
         col_index = self.tree["columns"].index(col)
-
-        # Define which columns hold integer values so they can be sorted
-        # numerically rather than lexicographically
         NUMERIC_COLUMNS = {"CLIENT ID", "AIRLINE ID"}
 
-        # Build a list of (sort_key, item_id) pairs for sorting
         data = []
         for item in items:
             raw = self.tree.item(item, "values")[col_index]
             if col in NUMERIC_COLUMNS:
                 try:
-                    key = int(raw)
+                    key: int | str = int(raw)
                 except (ValueError, TypeError):
                     key = 0
             else:
                 key = str(raw).lower()
             data.append((key, item))
 
-        # Sort the accumulated rows by their computed key
         data.sort(key=lambda t: t[0], reverse=reverse)
 
-        # Reinsert every row in the newly sorted order and reapply
-        # alternating row colours so the visual banding remains correct
         for index, (_, item) in enumerate(data):
             self.tree.move(item, "", index)
             tag = "evenrow" if index % 2 == 0 else "oddrow"
@@ -446,10 +381,10 @@ class FlightWindow(tk.Toplevel):
     # ----------------------------------------------------------
 
     def populate_treeview(self) -> None:
-        """
-        Clear and repopulate the Treeview with all flight records.
-        Shows an empty-state label when no records are present and
-        updates the total flight counter.
+        """Clear and repopulate the Treeview with all flight records.
+
+        Dates stored in ISO-8601 format are converted to the human-readable
+        ``YYYY-MM-DD HH:MM`` format for display via :func:`_fmt_date`.
         """
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -463,19 +398,18 @@ class FlightWindow(tk.Toplevel):
                     values=(
                         r.get("Client_ID"),
                         r.get("Airline_ID"),
-                        r.get("Date"),
+                        _fmt_date(r.get("Date", "")),  # human-readable display
                         r.get("Start City"),
-                        r.get("End City")
+                        r.get("End City"),
                     ),
-                    tags=(tag,)
+                    tags=(tag,),
                 )
                 count += 1
 
-        # Toggle empty-state label visibility
         if count == 0:
-            self.empty_label.lift()   # Bring the label to the front
+            self.empty_label.lift()
         else:
-            self.empty_label.lower()  # Send the label behind the Treeview
+            self.empty_label.lower()
 
         self.counter.config(text=f"Total Flights: {count}")
 
@@ -497,88 +431,93 @@ class FlightWindow(tk.Toplevel):
     # ----------------------------------------------------------
 
     def create_flight(self) -> None:
-        """
-        Validate the form and create a new flight record.
+        """Validate the form and create a new flight record.
 
-        The Date field is parsed from the user-entered ``YYYY-MM-DD HH:MM``
-        format and stored as a canonical ISO-8601 string (e.g.
-        ``"2025-06-15T10:30:00"``), ensuring correct deserialisation when
-        the application reloads from the JSONL file.
-        Verifies that the referenced Client ID and Airline ID already
-        exist in the data store before saving.
+        The Date field is parsed from ``YYYY-MM-DD HH:MM`` and stored as
+        ISO-8601 (``2025-06-15T10:30:00``) for consistent deserialisation.
         """
-        # Reload records via Repository to ensure no stale data is used
+        # Reload and re-sync self.records to avoid stale-reference bugs
         self.repo.load()
-        client_id = self.entries["Client ID *"].get().strip()
-        airline_id = self.entries["Airline ID *"].get().strip()
-        date = self.entries["Date (YYYY-MM-DD HH:MM) *"].get().strip()
-        start = self.entries["Start City *"].get().strip()
-        end = self.entries["End City *"].get().strip()
+        self.records = self.repo.records
 
-        # All fields are mandatory for a flight record
+        client_id  = self.entries["Client ID *"].get().strip()
+        airline_id = self.entries["Airline ID *"].get().strip()
+        date       = self.entries["Date (YYYY-MM-DD HH:MM) *"].get().strip()
+        start      = self.entries["Start City *"].get().strip()
+        end        = self.entries["End City *"].get().strip()
+
         if not all([client_id, airline_id, date, start, end]):
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
             messagebox.showwarning("Validation", "All fields must be filled.", parent=self)
             return
 
-        # Validate the date string against the expected format and convert
-        # to ISO-8601 for consistent storage (avoids ambiguous raw strings)
+        # Validate integer IDs before any other processing
         try:
-            parsed_date = datetime.strptime(date, "%Y-%m-%d %H:%M")
-            date_iso = parsed_date.isoformat()  # e.g. "2025-06-15T10:30:00"
+            client_id_int  = int(client_id)
+            airline_id_int = int(airline_id)
         except ValueError:
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
+            messagebox.showerror(
+                "Input Error",
+                "Client ID and Airline ID must be integer numbers.",
+                parent=self,
+            )
+            return
+
+        # Parse and convert the date to ISO-8601 for storage
+        try:
+            date_iso = datetime.strptime(date, "%Y-%m-%d %H:%M").isoformat()
+        except ValueError:
+            self.lift(); self.focus_force()
             messagebox.showwarning("Date Error", "Use format: YYYY-MM-DD HH:MM", parent=self)
             return
 
-        # Delegate to the Record layer, which enforces referential integrity
-        # and duplicate-key checks, raising exceptions the GUI can handle.
         try:
             _create_flight(
                 self.records,
-                client_id=int(client_id),
-                airline_id=int(airline_id),
+                client_id=client_id_int,
+                airline_id=airline_id_int,
                 date=date_iso,
                 start_city=start,
                 end_city=end,
             )
             self.repo.save()
         except RecordNotFoundError as exc:
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
             messagebox.showerror("Referential Integrity Error", str(exc), parent=self)
             return
         except DuplicateRecordError as exc:
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
             messagebox.showerror("Duplicate Record", str(exc), parent=self)
             return
+        except (ValueError, TypeError) as exc:
+            self.lift(); self.focus_force()
+            messagebox.showerror("Input Error", str(exc), parent=self)
+            return
+
         self.populate_treeview()
         self.clear_form()
         self.status.config(text="✔ Flight created successfully.")
-        self.lift()
-        self.focus_force()
+        self.lift(); self.focus_force()
         messagebox.showinfo("Success", "✔ Flight record added successfully.", parent=self)
 
     def search_flight(self) -> None:
-        """
-        Search for all flights belonging to a given Client ID.
-        Highlights every matching row in the Treeview on success.
-        """
+        """Search for all flights belonging to a given Client ID and highlight them."""
         cid = self.entries["Client ID *"].get().strip()
         found = False
 
         for r in self.records:
             if r.get("Type") == "Flight" and str(r.get("Client_ID")) == cid:
                 found = True
-                # Highlight the corresponding row in the Treeview
+                # The DATE column stores the display-formatted string
+                display_date = _fmt_date(r.get("Date", ""))
                 for item in self.tree.get_children():
                     vals = self.tree.item(item, "values")
-                    if (str(vals[0]) == str(r.get("Client_ID")) and
-                            str(vals[1]) == str(r.get("Airline_ID")) and
-                            str(vals[2]) == str(r.get("Date"))):
+                    if (
+                        str(vals[0]) == str(r.get("Client_ID"))
+                        and str(vals[1]) == str(r.get("Airline_ID"))
+                        and str(vals[2]) == display_date
+                    ):
                         self.tree.selection_set(item)
                         self.tree.focus(item)
                         self.tree.see(item)
@@ -586,54 +525,62 @@ class FlightWindow(tk.Toplevel):
 
         if found:
             self.status.config(text=f"✔ Flights for Client ID {cid} found.")
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
             messagebox.showinfo(
                 "Search Result", f"✔ Flight for Client ID {cid} found.", parent=self
             )
         else:
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
             messagebox.showinfo("Search", "✖ Flight not found.", parent=self)
 
     def update_flight(self) -> None:
-        """
-        Update the currently selected flight record with values from the form.
+        """Update the selected flight record with values from the form.
 
-        The Date field is parsed and converted to ISO-8601 format before being
-        stored, ensuring consistency with records created via ``create_flight``.
-        The record is matched by the original Client ID, Airline ID, and Date
-        read from the selected Treeview row.
+        The DATE column in the Treeview stores the display format
+        ``YYYY-MM-DD HH:MM``; this is converted back to ISO-8601 before
+        being passed to the Record layer for the composite-key lookup.
         """
         selected = self.tree.selection()
         if not selected:
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
             messagebox.showwarning("Update", "Select a flight first.", parent=self)
             return
 
         values = self.tree.item(selected[0], "values")
-        orig_client_id = int(values[0])
+        orig_client_id  = int(values[0])
         orig_airline_id = int(values[1])
-        orig_date = str(values[2])
 
-        # Validate and convert the new date entry to ISO-8601 format
+        # Convert the display-format date back to ISO-8601 for the lookup
+        orig_date = _display_to_iso(str(values[2]))
+
+        # Validate new integer IDs from the form
+        try:
+            new_client_id_int  = int(self.entries["Client ID *"].get().strip())
+            new_airline_id_int = int(self.entries["Airline ID *"].get().strip())
+        except ValueError:
+            self.lift(); self.focus_force()
+            messagebox.showerror(
+                "Input Error",
+                "Client ID and Airline ID must be integer numbers.",
+                parent=self,
+            )
+            return
+
+        # Parse and convert the new date to ISO-8601
         new_date_str = self.entries["Date (YYYY-MM-DD HH:MM) *"].get().strip()
         try:
             new_date_iso = datetime.strptime(new_date_str, "%Y-%m-%d %H:%M").isoformat()
         except ValueError:
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
             messagebox.showwarning("Date Error", "Use format: YYYY-MM-DD HH:MM", parent=self)
             return
 
-        # Delegate to the Record layer, which locates the record by composite key
         updates = {
-            "Client_ID": int(self.entries["Client ID *"].get()),
-            "Airline_ID": int(self.entries["Airline ID *"].get()),
-            "Date": new_date_iso,
-            "Start City": self.entries["Start City *"].get(),
-            "End City": self.entries["End City *"].get(),
+            "Client_ID":  new_client_id_int,
+            "Airline_ID": new_airline_id_int,
+            "Date":       new_date_iso,
+            "Start City": self.entries["Start City *"].get().strip(),
+            "End City":   self.entries["End City *"].get().strip(),
         }
         try:
             _update_flight(
@@ -645,58 +592,65 @@ class FlightWindow(tk.Toplevel):
             )
             self.repo.save()
         except RecordNotFoundError as exc:
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
             messagebox.showerror("Not Found", str(exc), parent=self)
             return
+        except (ValueError, TypeError) as exc:
+            self.lift(); self.focus_force()
+            messagebox.showerror("Input Error", str(exc), parent=self)
+            return
+
         self.populate_treeview()
         self.status.config(text="✔ Flight record updated successfully.")
-        self.lift()
-        self.focus_force()
+        self.lift(); self.focus_force()
         messagebox.showinfo("Success", "✔ Flight record updated successfully.", parent=self)
 
     def delete_flight(self) -> None:
-        """
-        Delete the selected flight record after asking the user for confirmation.
-        Matches the record by Client ID, Airline ID, and Date.
+        """Delete the selected flight after confirmation.
+
+        The DATE column stores the display format; it is converted back to
+        ISO-8601 before being passed to the Record layer.
         """
         selected = self.tree.selection()
         if not selected:
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
             messagebox.showwarning("Delete", "Select a flight first.", parent=self)
             return
 
-        self.lift()
-        self.focus_force()
+        self.lift(); self.focus_force()
         if not messagebox.askyesno(
             "Confirm Delete",
             "Are you sure you want to delete the selected flight?",
-            parent=self
+            parent=self,
         ):
             return
 
         values = self.tree.item(selected[0], "values")
 
-        # Delegate to the Record layer, which removes by composite key
+        # Convert display-format date back to ISO-8601 for the composite-key lookup
+        stored_date = _display_to_iso(str(values[2]))
+
         try:
             _delete_flight(
                 self.records,
                 client_id=int(values[0]),
                 airline_id=int(values[1]),
-                date=str(values[2]),
+                date=stored_date,
             )
             self.repo.save()
         except RecordNotFoundError as exc:
-            self.lift()
-            self.focus_force()
+            self.lift(); self.focus_force()
             messagebox.showerror("Not Found", str(exc), parent=self)
             return
+        except (ValueError, TypeError) as exc:
+            self.lift(); self.focus_force()
+            messagebox.showerror("Input Error", str(exc), parent=self)
+            return
+
         self.populate_treeview()
         self.clear_form()
         self.status.config(text="✔ Flight deleted successfully.")
-        self.lift()
-        self.focus_force()
+        self.lift(); self.focus_force()
         messagebox.showinfo(
             "Delete Successful", "✔ Flight was deleted successfully.", parent=self
         )
@@ -706,13 +660,16 @@ class FlightWindow(tk.Toplevel):
     # ----------------------------------------------------------
 
     def on_tree_select(self, event: tk.Event) -> None:
-        """Populate the form fields when the user selects a row in the Treeview."""
+        """Populate the form fields when the user selects a Treeview row.
+
+        The DATE value in the Treeview is already in ``YYYY-MM-DD HH:MM``
+        display format, so it can be inserted into the entry widget directly.
+        """
         selected = self.tree.selection()
         if not selected:
             return
         values = self.tree.item(selected[0], "values")
         keys = list(self.entries.keys())
-        # Map each Treeview column value to its corresponding entry widget
         for i, key in enumerate(keys):
             self.entries[key].delete(0, tk.END)
             self.entries[key].insert(0, values[i])
@@ -724,5 +681,5 @@ class FlightWindow(tk.Toplevel):
     def on_close(self) -> None:
         """Persist all records to the JSONL file before destroying the window."""
         self.repo.save()
-        self.grab_release()  # Release the modal grab before destroying
+        self.grab_release()
         self.destroy()
