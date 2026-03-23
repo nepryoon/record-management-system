@@ -1,0 +1,19 @@
+# <type>(<scope>): <subject>
+#
+# Types: feat | fix | docs | style | refactor | test | chore
+# Scope: optional short noun describing the section of the codebase
+# Subject: imperative present tense, no full stop, ≤ 72 characters
+#
+# Examples:
+#   feat(client): add cascade delete for associated flight records
+#   fix(storage): correct default JSONL file path to data/records.jsonl
+#   docs: add commit message template and contributing guide
+#   test(flight): add canonical schema key assertions
+#
+# Body (optional) — wrap at 72 characters:
+# Explain *what* and *why*, not *how*.
+#
+# Footer (optional):
+#   Refs: #<issue-number>
+#   BREAKING CHANGE: <description>
+#
